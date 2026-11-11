@@ -2,7 +2,234 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1">
+
+<meta name="theme-color" content="#121820">
 <title>AVATAR - XỨ SỞ KỲ DIỆU (HTML5 60FPS Edition)</title>
+/* ===== GIAO DIỆN CHO GITHUB PAGES VÀ ĐIỆN THOẠI ===== */
+
+html {
+    min-height: 100%;
+}
+
+body {
+    display: block;
+    height: auto;
+    min-height: 100vh;
+    overflow: auto;
+    padding: 8px;
+}
+
+#game-wrapper {
+    width: min(1040px, 100%);
+    height: auto;
+    margin: 0 auto;
+}
+
+#top-bar {
+    height: auto;
+    min-height: 48px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px;
+}
+
+.stat-box {
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.stat-box span {
+    font-size: 12px;
+}
+
+.top-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.top-btns button {
+    min-height: 40px;
+    margin-left: 0;
+}
+
+#nav-bar {
+    height: auto;
+    min-height: 44px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px;
+}
+
+.zone-btn {
+    flex: 1 1 150px;
+    min-height: 40px;
+    margin: 0;
+}
+
+#main-area {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 720px) minmax(260px, 320px);
+    height: auto;
+    flex: none;
+}
+
+#canvas-box {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 2;
+    overflow: hidden;
+}
+
+#gameCanvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 2;
+    touch-action: manipulation;
+}
+
+#sidebar {
+    width: 100%;
+    min-width: 0;
+    max-height: 480px;
+}
+
+#wardrobe-box {
+    margin-top: 12px;
+}
+
+#bottom-bar {
+    height: auto;
+    min-height: 88px;
+    flex-shrink: 0;
+    gap: 10px;
+}
+
+#chat-row {
+    flex-wrap: wrap;
+}
+
+#chat-input {
+    min-width: 0;
+    flex: 1 1 180px;
+    min-height: 42px;
+    user-select: text;
+}
+
+#chat-row > span:last-child {
+    flex-basis: 100%;
+}
+
+#log-box {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+button,
+.zone-btn,
+.action-btn {
+    touch-action: manipulation;
+}
+
+/* Bàn phím cảm ứng */
+#touch-controls {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding: 12px;
+    background: #202d3a;
+    border-top: 1px solid #485460;
+}
+
+.touch-pad {
+    display: grid;
+    grid-template-columns: repeat(3, 52px);
+    grid-template-rows: repeat(2, 48px);
+    gap: 6px;
+}
+
+.touch-pad button {
+    border: 1px solid #6986a0;
+    border-radius: 8px;
+    background: #34495e;
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    touch-action: none;
+}
+
+.touch-pad button:active {
+    background: #0097e6;
+}
+
+.touch-up {
+    grid-column: 2;
+    grid-row: 1;
+}
+
+.touch-left {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+.touch-down {
+    grid-column: 2;
+    grid-row: 2;
+}
+
+.touch-right {
+    grid-column: 3;
+    grid-row: 2;
+}
+
+.touch-hint {
+    max-width: 270px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #d4e1ec;
+}
+
+@media (max-width: 900px) {
+    #main-area {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    #sidebar {
+        border-left: none;
+        border-top: 2px solid #34495e;
+        max-height: 400px;
+    }
+}
+
+@media (max-width: 900px), (pointer: coarse) {
+    #touch-controls {
+        display: flex;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 4px;
+    }
+
+    #top-bar,
+    #bottom-bar {
+        padding: 8px;
+    }
+
+    .zone-btn {
+        flex-basis: 130px;
+        font-size: 12px;
+    }
+}
 <style>
     * { box-sizing: border-box; user-select: none; font-family: 'Segoe UI', Tahoma, sans-serif; }
     body { margin: 0; background: #121820; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
@@ -47,6 +274,85 @@
     #chat-input:focus { border-color: #00a8ff; }
     #log-box { font-size: 13px; color: #2ecc71; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .seed-radio { display: flex; align-items: center; gap: 6px; background: #34495e; padding: 6px 10px; border-radius: 5px; margin-bottom: 5px; cursor: pointer; font-size: 12px; }
+#diamond-rewards {
+    padding: 12px;
+    background: #172d40;
+    border-top: 2px solid #3c7896;
+    color: #edf7ff;
+}
+
+.diamond-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+#diamond-wallet {
+    color: #7ee6ff;
+    font-weight: bold;
+}
+
+.diamond-description {
+    margin: 8px 0 12px;
+    font-size: 12px;
+    color: #b7ccdd;
+}
+
+#diamond-task-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.diamond-task {
+    padding: 12px;
+    background: #223e54;
+    border: 1px solid #466d87;
+    border-radius: 9px;
+}
+
+.diamond-task strong,
+.diamond-task span {
+    display: block;
+}
+
+.diamond-task span {
+    margin: 7px 0;
+    font-size: 12px;
+    color: #c9deec;
+}
+
+.diamond-task button {
+    width: 100%;
+    min-height: 40px;
+    border: none;
+    border-radius: 7px;
+    background: #087ba1;
+    color: white;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.diamond-task button:disabled {
+    background: #41566a;
+    color: #aebcca;
+    cursor: default;
+}
+
+#diamond-notice {
+    margin-top: 9px;
+    min-height: 18px;
+    font-size: 12px;
+    color: #ffe093;
+}
+
+@media (max-width: 600px) {
+    #diamond-task-list {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
 </style>
 </head>
 <body>
@@ -93,6 +399,55 @@
             </div>
         </div>
     </div>
+   
+    <!-- Điều khiển cảm ứng cho điện thoại -->
+<div id="touch-controls">
+    <div class="touch-pad"
+         role="group"
+         aria-label="Điều khiển nhân vật và câu cá">
+
+        <button type="button"
+                class="touch-up"
+                data-game-key="ArrowUp"
+                aria-label="Lên">↑</button>
+
+        <button type="button"
+                class="touch-left"
+                data-game-key="ArrowLeft"
+                aria-label="Trái">←</button>
+
+        <button type="button"
+                class="touch-down"
+                data-game-key="ArrowDown"
+                aria-label="Xuống">↓</button>
+
+        <button type="button"
+                class="touch-right"
+                data-game-key="ArrowRight"
+                aria-label="Phải">→</button>
+    </div>
+
+    <div class="touch-hint">
+        Giữ nút để di chuyển.<br>
+        Khi cá cắn câu, chạm lần lượt các hướng được yêu cầu.<br>
+        Ở nông trại, chạm ô đất để trồng hoặc thu hoạch.
+    </div>
+</div>
+
+<section id="diamond-rewards">
+    <div class="diamond-heading">
+        <strong>💎 KIẾM KIM CƯƠNG</strong>
+        <span id="diamond-wallet">Đang kết nối ví…</span>
+    </div>
+
+    <p class="diamond-description">
+        Hoàn thành nhiệm vụ và nhận tối đa 25 kim cương mỗi ngày.
+    </p>
+
+    <div id="diamond-task-list"></div>
+
+    <div id="diamond-notice" role="status"></div>
+</section>
 
     <!-- Khung dưới: Chat & Log -->
     <div id="bottom-bar">
@@ -191,31 +546,169 @@ let npcs = [
       chats: ["Đập đồ lên +10 không sợ xịt nào!", "Mang Cánh lại đây ta rèn cho!", "Lửa lò rèn hôm nay đang rất đỏ!"], bubble: null }
 ];
 
-// ================= KHỞI TẠO & ĐIỀU KHIỂN =================
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-window.addEventListener("keydown", e => {
-    if (document.activeElement.id === "chat-input") return;
-    keys[e.key] = true;
-    handleFishingKey(e.key);
-});
-window.addEventListener("keyup", e => keys[e.key] = false);
+const CONTROL_KEYS = new Set([
+    "ArrowUp",
+    "ArrowDown",
+    "ArrowLeft",
+    "ArrowRight",
+    "w", "W",
+    "a", "A",
+    "s", "S",
+    "d", "D"
+]);
 
-canvas.addEventListener("mousedown", e => {
+function isTyping() {
+    const active = document.activeElement;
+
+    return Boolean(
+        active
+        && (
+            active.matches("input, textarea, select")
+            || active.isContentEditable
+        )
+    );
+}
+
+/* ===== BÀN PHÍM MÁY TÍNH ===== */
+
+window.addEventListener("keydown", event => {
+    if (isTyping() || !CONTROL_KEYS.has(event.key)) {
+        return;
+    }
+
+    event.preventDefault();
+
+    if (player.jailTime > 0) {
+        return;
+    }
+
+    keys[event.key] = true;
+
+    // Giữ phím không tự nhập lặp nhiều bước câu cá.
+    if (!event.repeat) {
+        handleFishingKey(event.key);
+    }
+});
+
+window.addEventListener("keyup", event => {
+    keys[event.key] = false;
+});
+
+function clearMovement() {
+    keys = {};
+    player.vx = 0;
+    player.vy = 0;
+}
+
+window.addEventListener("blur", clearMovement);
+
+document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+        clearMovement();
+        saveGame(false);
+    }
+});
+
+/* ===== CHẠM Ô ĐẤT / CLICK CHUỘT ===== */
+
+const canvasTouches = new Map();
+
+canvas.addEventListener("pointerdown", event => {
+    if (event.button !== 0) {
+        return;
+    }
+
+    canvasTouches.set(event.pointerId, {
+        x: event.clientX,
+        y: event.clientY
+    });
+});
+
+canvas.addEventListener("pointercancel", event => {
+    canvasTouches.delete(event.pointerId);
+});
+
+canvas.addEventListener("pointerup", event => {
+    const start = canvasTouches.get(event.pointerId);
+    canvasTouches.delete(event.pointerId);
+
+    if (!start) {
+        return;
+    }
+
+    // Không coi thao tác kéo/cuộn là chạm ô đất.
+    if (
+        Math.hypot(
+            event.clientX - start.x,
+            event.clientY - start.y
+        ) > 12
+    ) {
+        return;
+    }
+
+    if (
+        player.zone !== "Nông Trại"
+        || player.jailTime > 0
+    ) {
+        return;
+    }
+
     const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-    if (player.zone === "Nông Trại" && player.jailTime <= 0) {
-        for (let i = 0; i < 6; i++) {
-            let r = Math.floor(i / 3), c = i % 3;
-            let px = 65 + c * 125, py = 190 + r * 125;
-            if (mx >= px && mx <= px + 105 && my >= py && my <= py + 95) {
-                interactPlot(i);
-                return;
-            }
+
+    // Đổi tọa độ màn hình sang tọa độ Canvas 720 × 480.
+    const mx =
+        (event.clientX - rect.left)
+        * canvas.width / rect.width;
+
+    const my =
+        (event.clientY - rect.top)
+        * canvas.height / rect.height;
+
+    for (let index = 0; index < 6; index++) {
+        const row = Math.floor(index / 3);
+        const col = index % 3;
+
+        const px = 65 + col * 125;
+        const py = 190 + row * 125;
+
+        if (
+            mx >= px && mx <= px + 105
+            && my >= py && my <= py + 95
+        ) {
+            interactPlot(index);
+            return;
         }
     }
+});
+
+/* ===== BỐN NÚT CẢM ỨNG ===== */
+
+document.querySelectorAll("[data-game-key]").forEach(button => {
+    const key = button.dataset.gameKey;
+
+    button.addEventListener("pointerdown", event => {
+        event.preventDefault();
+
+        if (player.jailTime > 0) {
+            return;
+        }
+
+        button.setPointerCapture(event.pointerId);
+
+        keys[key] = true;
+        handleFishingKey(key);
+    });
+
+    const release = () => {
+        keys[key] = false;
+    };
+
+    button.addEventListener("pointerup", release);
+    button.addEventListener("pointercancel", release);
+    button.addEventListener("lostpointercapture", release);
 });
 
 function log(msg, color = "#2ecc71") {
@@ -366,6 +859,7 @@ function interactPlot(idx) {
             spawnFloatingText(`+${reward} Xu`, 110 + (idx%3)*125, 220 + Math.floor(idx/3)*125, "#f1c40f");
             log(`Thu hoạch ${p.crop} bán được +${reward} Xu!`, "#f1c40f");
             p.crop = null;
+            DiamondRewards.track("harvest");
         } else if (p.pest || !p.watered) {
             p.pest = false; p.watered = true; p.plantedAt -= 2;
             log(`Đã tưới nước & bắt sâu ô đất ${idx + 1}! Cây lớn nhanh hơn!`);
@@ -470,6 +964,7 @@ function handleFishingKey(key) {
             spawnFloatingText(`+${fishing.fish.sell} Xu!`, player.x, player.y - 60, "#f1c40f");
             log(`🐟 TUYỆT ĐỈNH! Bạn đã kéo lên [${fishing.fish.name}] bán được +${fishing.fish.sell} Xu!`, "#f1c40f");
             fishing.state = "IDLE";
+            DiamondRewards.track("fish");
         }
     } else {
         fishing.state = "IDLE";
@@ -1094,10 +1589,32 @@ function loadGame() {
     } catch (e) {}
 }
 
-// ================= KHỞI CHẠY VÒNG LẶP 60FPS =================
-function gameLoop() {
-    updateLogic();
-    renderScene();
+const LOGIC_STEP = 1 / 60;
+
+let previousFrame = performance.now();
+let accumulatedTime = 0;
+
+function gameLoop(now) {
+    const elapsed = Math.max(
+        0,
+        Math.min((now - previousFrame) / 1000, 0.1)
+    );
+
+    previousFrame = now;
+    accumulatedTime += elapsed;
+
+    let updated = false;
+
+    while (accumulatedTime >= LOGIC_STEP) {
+        updateLogic();
+        accumulatedTime -= LOGIC_STEP;
+        updated = true;
+    }
+
+    if (updated) {
+        renderScene();
+    }
+
     requestAnimationFrame(gameLoop);
 }
 
@@ -1106,6 +1623,374 @@ renderWardrobe();
 renderSidebar();
 requestAnimationFrame(gameLoop);
 setInterval(() => saveGame(false), 10000); // Tự động lưu mỗi 10 giây
+
+/* ===== NHIỆM VỤ NGÀY NHẬN KIM CƯƠNG ===== */
+
+const DiamondRewards = (() => {
+    const STORAGE_KEY = "avatar_daily_diamond_rewards_v1";
+
+    const TASKS = [
+        {
+            id: "daily",
+            title: "📅 Điểm danh hôm nay",
+            target: 1,
+            reward: 5
+        },
+        {
+            id: "harvest",
+            title: "🌾 Thu hoạch thành công 5 lần",
+            target: 5,
+            reward: 10
+        },
+        {
+            id: "fish",
+            title: "🎣 Câu được 3 con cá",
+            target: 3,
+            reward: 10
+        }
+    ];
+
+    let wallet = null;
+    let progress = null;
+    let storageReady = true;
+    let claiming = false;
+
+    function today() {
+        const date = new Date();
+
+        return [
+            date.getFullYear(),
+            String(date.getMonth() + 1).padStart(2, "0"),
+            String(date.getDate()).padStart(2, "0")
+        ].join("-");
+    }
+
+    function emptyProgress() {
+        return {
+            date: today(),
+            harvest: 0,
+            fish: 0,
+            claimed: []
+        };
+    }
+
+    function notice(message) {
+        document.getElementById("diamond-notice").textContent =
+            message;
+    }
+
+    function normalizeCount(value, maximum) {
+        return Number.isSafeInteger(value) && value >= 0
+            ? Math.min(value, maximum)
+            : 0;
+    }
+
+    function loadProgress() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            const saved = raw ? JSON.parse(raw) : null;
+
+            progress = emptyProgress();
+
+            if (saved && saved.date === today()) {
+                progress.harvest = normalizeCount(
+                    saved.harvest, 5
+                );
+
+                progress.fish = normalizeCount(
+                    saved.fish, 3
+                );
+
+                const validIds = TASKS.map(task => task.id);
+
+                progress.claimed = Array.isArray(saved.claimed)
+                    ? [...new Set(
+                        saved.claimed.filter(
+                            id => validIds.includes(id)
+                        )
+                    )]
+                    : [];
+            }
+
+            persist();
+        } catch (error) {
+            progress = emptyProgress();
+            storageReady = false;
+
+            notice(
+                "Không truy cập được dữ liệu lưu. "
+                + "Tạm khóa nhận thưởng để tránh lỗi."
+            );
+
+            console.error(error);
+        }
+    }
+
+    function persist() {
+        localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify(progress)
+        );
+    }
+
+    function ensureCurrentDay() {
+        if (progress.date === today()) {
+            return;
+        }
+
+        progress = emptyProgress();
+
+        try {
+            persist();
+        } catch (error) {
+            storageReady = false;
+
+            notice(
+                "Không lưu được nhiệm vụ ngày mới. "
+                + "Vui lòng kiểm tra quyền lưu dữ liệu."
+            );
+        }
+    }
+
+    function countFor(task) {
+        return task.id === "daily"
+            ? 1
+            : progress[task.id];
+    }
+
+    function render() {
+        ensureCurrentDay();
+
+        const container =
+            document.getElementById("diamond-task-list");
+
+        container.replaceChildren();
+
+        const balanceElement =
+            document.getElementById("diamond-wallet");
+
+        try {
+            const balance = wallet ? wallet.get() : null;
+
+            balanceElement.textContent =
+                Number.isSafeInteger(balance) && balance >= 0
+                    ? `💎 ${balance.toLocaleString("vi-VN")}`
+                    : "Chưa kết nối ví kim cương";
+        } catch (error) {
+            balanceElement.textContent =
+                "Không đọc được ví kim cương";
+        }
+
+        for (const task of TASKS) {
+            const card = document.createElement("div");
+            card.className = "diamond-task";
+
+            const title = document.createElement("strong");
+            title.textContent = task.title;
+
+            const detail = document.createElement("span");
+
+            const count = countFor(task);
+            const claimed = progress.claimed.includes(task.id);
+
+            detail.textContent =
+                `${Math.min(count, task.target)}/${task.target}`
+                + ` • Thưởng ${task.reward} 💎`;
+
+            const button = document.createElement("button");
+            button.type = "button";
+
+            button.textContent = claimed
+                ? "Đã nhận"
+                : count >= task.target
+                    ? "Nhận thưởng"
+                    : "Chưa hoàn thành";
+
+            button.disabled =
+                claimed
+                || count < task.target
+                || !wallet
+                || !storageReady
+                || claiming;
+
+            button.onclick = () => claim(task.id);
+
+            card.append(title, detail, button);
+            container.appendChild(card);
+        }
+    }
+
+    function track(type) {
+        if (!["harvest", "fish"].includes(type)) {
+            return;
+        }
+
+        ensureCurrentDay();
+
+        if (!storageReady) {
+            return;
+        }
+
+        const task = TASKS.find(item => item.id === type);
+
+        if (progress[type] >= task.target) {
+            return;
+        }
+
+        progress[type] += 1;
+
+        try {
+            persist();
+
+            if (progress[type] === task.target) {
+                notice(
+                    `Hoàn thành "${task.title}". `
+                    + "Bạn có thể nhận thưởng!"
+                );
+            }
+        } catch (error) {
+            storageReady = false;
+
+            notice(
+                "Không lưu được tiến độ. "
+                + "Nhận thưởng đã tạm khóa."
+            );
+
+            console.error(error);
+        }
+
+        render();
+    }
+
+    function claim(id) {
+        ensureCurrentDay();
+
+        const task = TASKS.find(item => item.id === id);
+
+        if (
+            !task
+            || !wallet
+            || !storageReady
+            || claiming
+            || progress.claimed.includes(id)
+            || countFor(task) < task.target
+        ) {
+            return;
+        }
+
+        let oldBalance;
+
+        try {
+            oldBalance = wallet.get();
+
+            if (
+                !Number.isSafeInteger(oldBalance)
+                || oldBalance < 0
+                || !Number.isSafeInteger(oldBalance + task.reward)
+            ) {
+                throw new Error("Số dư kim cương không hợp lệ.");
+            }
+        } catch (error) {
+            notice(error.message);
+            return;
+        }
+
+        claiming = true;
+        render();
+
+        const oldClaims = [...progress.claimed];
+
+        try {
+            progress.claimed.push(id);
+
+            // Kiểm tra khả năng lưu trước khi cộng thưởng.
+            persist();
+
+            wallet.set(oldBalance + task.reward);
+            wallet.save();
+
+            notice(`Đã nhận ${task.reward} kim cương!`);
+
+            if (typeof log === "function") {
+                log(
+                    `💎 Nhận ${task.reward} kim cương `
+                    + `từ nhiệm vụ: ${task.title}`
+                );
+            }
+        } catch (error) {
+            // Khôi phục nếu bộ kết nối ví báo lỗi.
+            progress.claimed = oldClaims;
+
+            try {
+                wallet.set(oldBalance);
+                wallet.save();
+                persist();
+            } catch (rollbackError) {
+                storageReady = false;
+                console.error(rollbackError);
+            }
+
+            notice(
+                "Không hoàn tất nhận thưởng. "
+                + "Vui lòng kiểm tra dữ liệu lưu."
+            );
+
+            console.error(error);
+        } finally {
+            claiming = false;
+            render();
+
+            if (typeof wallet.refresh === "function") {
+                try {
+                    wallet.refresh();
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+        }
+    }
+
+    function configure(adapter) {
+        if (
+            !adapter
+            || typeof adapter.get !== "function"
+            || typeof adapter.set !== "function"
+            || typeof adapter.save !== "function"
+        ) {
+            throw new Error("Bộ kết nối kim cương chưa đầy đủ.");
+        }
+
+        wallet = adapter;
+        render();
+    }
+
+    loadProgress();
+    render();
+
+    // Cập nhật nhiệm vụ nếu người chơi mở game qua ngày mới.
+    setInterval(render, 60000);
+
+    return {
+        configure,
+        track,
+        refresh: render
+    };
+})();
+DiamondRewards.configure({
+    get: () => player.luong,
+
+    set: value => {
+        player.luong = value;
+    },
+
+    save: () => {
+        saveGame(false);
+    },
+
+    refresh: () => {
+        renderSidebar();
+    }
+});
 </script>
 </body>
 </html>
