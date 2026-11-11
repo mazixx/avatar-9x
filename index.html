@@ -6,6 +6,131 @@
       content="width=device-width, initial-scale=1">
 
 <meta name="theme-color" content="#121820">
+<style>
+    * { box-sizing: border-box; user-select: none; font-family: 'Segoe UI', Tahoma, sans-serif; }
+    body { margin: 0; background: #121820; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+    #game-wrapper { width: 1040px; height: 660px; background: #1e272e; border-radius: 12px; box-shadow: 0 12px 35px rgba(0,0,0,0.7); display: flex; flex-direction: column; overflow: hidden; border: 2px solid #485460; }
+    
+    /* TOP BAR */
+    #top-bar { height: 48px; background: linear-gradient(90deg, #0f2027, #203a43, #2c5364); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 2px solid #f1c40f; }
+    .stat-box { font-size: 14px; font-weight: bold; color: #f1c40f; display: flex; gap: 18px; }
+    .stat-box span { background: rgba(0,0,0,0.35); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); }
+    .top-btns button { background: #8e44ad; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-left: 6px; }
+    .top-btns button:hover { transform: scale(1.05); filter: brightness(1.15); }
+
+    /* NAV BAR */
+    #nav-bar { height: 44px; background: #2f3640; display: flex; align-items: center; justify-content: space-around; padding: 0 10px; border-bottom: 1px solid #353b48; }
+    .zone-btn { flex: 1; margin: 0 4px; padding: 7px 0; border: none; border-radius: 6px; font-weight: bold; color: white; cursor: pointer; transition: 0.2s; font-size: 13px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
+    .zone-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+
+    /* MAIN AREA */
+    #main-area { display: flex; flex: 1; height: 480px; }
+    #canvas-box { position: relative; width: 720px; height: 480px; background: #000; }
+    canvas { display: block; }
+
+    /* SIDEBAR */
+    #sidebar { width: 320px; background: #2c3e50; border-left: 2px solid #34495e; display: flex; flex-direction: column; padding: 10px; overflow-y: auto; }
+    .panel-title { background: #1a252f; color: #f1c40f; padding: 8px; text-align: center; font-weight: bold; border-radius: 6px; margin-bottom: 8px; font-size: 14px; letter-spacing: 0.5px; }
+    .action-btn { width: 100%; padding: 9px; margin-bottom: 6px; border: none; border-radius: 6px; font-weight: bold; color: white; cursor: pointer; transition: 0.15s; text-align: left; padding-left: 12px; font-size: 13px; box-shadow: 0 3px 0 rgba(0,0,0,0.3); }
+    .action-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .action-btn:active { transform: translateY(1px); box-shadow: none; }
+
+    /* WARDROBE LIST */
+    #wardrobe-box { margin-top: auto; background: #1e272e; padding: 8px; border-radius: 8px; border: 1px solid #485460; }
+    .wardrobe-list { max-height: 125px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+    .item-row { display: flex; justify-content: space-between; align-items: center; background: #2f3640; padding: 6px 10px; border-radius: 5px; font-size: 12px; cursor: pointer; transition: 0.15s; border: 1px solid transparent; }
+    .item-row:hover { border-color: #00a8ff; background: #353b48; }
+    .item-row.equipped { background: #192a56; border-color: #fbc531; color: #fbc531; font-weight: bold; }
+    .badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+
+    /* BOTTOM BAR */
+    #bottom-bar { height: 88px; background: #1a252f; border-top: 2px solid #34495e; padding: 8px 14px; display: flex; flex-direction: column; justify-content: space-between; }
+    #chat-row { display: flex; gap: 8px; align-items: center; }
+    #chat-input { flex: 1; padding: 7px 12px; border-radius: 6px; border: 1px solid #485460; background: #2f3640; color: white; font-size: 13px; outline: none; }
+    #chat-input:focus { border-color: #00a8ff; }
+    #log-box { font-size: 13px; color: #2ecc71; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .seed-radio { display: flex; align-items: center; gap: 6px; background: #34495e; padding: 6px 10px; border-radius: 5px; margin-bottom: 5px; cursor: pointer; font-size: 12px; }
+#diamond-rewards {
+    padding: 12px;
+    background: #172d40;
+    border-top: 2px solid #3c7896;
+    color: #edf7ff;
+}
+
+.diamond-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+#diamond-wallet {
+    color: #7ee6ff;
+    font-weight: bold;
+}
+
+.diamond-description {
+    margin: 8px 0 12px;
+    font-size: 12px;
+    color: #b7ccdd;
+}
+
+#diamond-task-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.diamond-task {
+    padding: 12px;
+    background: #223e54;
+    border: 1px solid #466d87;
+    border-radius: 9px;
+}
+
+.diamond-task strong,
+.diamond-task span {
+    display: block;
+}
+
+.diamond-task span {
+    margin: 7px 0;
+    font-size: 12px;
+    color: #c9deec;
+}
+
+.diamond-task button {
+    width: 100%;
+    min-height: 40px;
+    border: none;
+    border-radius: 7px;
+    background: #087ba1;
+    color: white;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.diamond-task button:disabled {
+    background: #41566a;
+    color: #aebcca;
+    cursor: default;
+}
+
+#diamond-notice {
+    margin-top: 9px;
+    min-height: 18px;
+    font-size: 12px;
+    color: #ffe093;
+}
+
+@media (max-width: 600px) {
+    #diamond-task-list {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+</style>
+<style>
 <title>AVATAR - XỨ SỞ KỲ DIỆU (HTML5 60FPS Edition)</title>
 /* ===== GIAO DIỆN CHO GITHUB PAGES VÀ ĐIỆN THOẠI ===== */
 
@@ -228,129 +353,6 @@ button,
     .zone-btn {
         flex-basis: 130px;
         font-size: 12px;
-    }
-}
-<style>
-    * { box-sizing: border-box; user-select: none; font-family: 'Segoe UI', Tahoma, sans-serif; }
-    body { margin: 0; background: #121820; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-    #game-wrapper { width: 1040px; height: 660px; background: #1e272e; border-radius: 12px; box-shadow: 0 12px 35px rgba(0,0,0,0.7); display: flex; flex-direction: column; overflow: hidden; border: 2px solid #485460; }
-    
-    /* TOP BAR */
-    #top-bar { height: 48px; background: linear-gradient(90deg, #0f2027, #203a43, #2c5364); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 2px solid #f1c40f; }
-    .stat-box { font-size: 14px; font-weight: bold; color: #f1c40f; display: flex; gap: 18px; }
-    .stat-box span { background: rgba(0,0,0,0.35); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); }
-    .top-btns button { background: #8e44ad; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-left: 6px; }
-    .top-btns button:hover { transform: scale(1.05); filter: brightness(1.15); }
-
-    /* NAV BAR */
-    #nav-bar { height: 44px; background: #2f3640; display: flex; align-items: center; justify-content: space-around; padding: 0 10px; border-bottom: 1px solid #353b48; }
-    .zone-btn { flex: 1; margin: 0 4px; padding: 7px 0; border: none; border-radius: 6px; font-weight: bold; color: white; cursor: pointer; transition: 0.2s; font-size: 13px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
-    .zone-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
-
-    /* MAIN AREA */
-    #main-area { display: flex; flex: 1; height: 480px; }
-    #canvas-box { position: relative; width: 720px; height: 480px; background: #000; }
-    canvas { display: block; }
-
-    /* SIDEBAR */
-    #sidebar { width: 320px; background: #2c3e50; border-left: 2px solid #34495e; display: flex; flex-direction: column; padding: 10px; overflow-y: auto; }
-    .panel-title { background: #1a252f; color: #f1c40f; padding: 8px; text-align: center; font-weight: bold; border-radius: 6px; margin-bottom: 8px; font-size: 14px; letter-spacing: 0.5px; }
-    .action-btn { width: 100%; padding: 9px; margin-bottom: 6px; border: none; border-radius: 6px; font-weight: bold; color: white; cursor: pointer; transition: 0.15s; text-align: left; padding-left: 12px; font-size: 13px; box-shadow: 0 3px 0 rgba(0,0,0,0.3); }
-    .action-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
-    .action-btn:active { transform: translateY(1px); box-shadow: none; }
-
-    /* WARDROBE LIST */
-    #wardrobe-box { margin-top: auto; background: #1e272e; padding: 8px; border-radius: 8px; border: 1px solid #485460; }
-    .wardrobe-list { max-height: 125px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
-    .item-row { display: flex; justify-content: space-between; align-items: center; background: #2f3640; padding: 6px 10px; border-radius: 5px; font-size: 12px; cursor: pointer; transition: 0.15s; border: 1px solid transparent; }
-    .item-row:hover { border-color: #00a8ff; background: #353b48; }
-    .item-row.equipped { background: #192a56; border-color: #fbc531; color: #fbc531; font-weight: bold; }
-    .badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; }
-
-    /* BOTTOM BAR */
-    #bottom-bar { height: 88px; background: #1a252f; border-top: 2px solid #34495e; padding: 8px 14px; display: flex; flex-direction: column; justify-content: space-between; }
-    #chat-row { display: flex; gap: 8px; align-items: center; }
-    #chat-input { flex: 1; padding: 7px 12px; border-radius: 6px; border: 1px solid #485460; background: #2f3640; color: white; font-size: 13px; outline: none; }
-    #chat-input:focus { border-color: #00a8ff; }
-    #log-box { font-size: 13px; color: #2ecc71; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .seed-radio { display: flex; align-items: center; gap: 6px; background: #34495e; padding: 6px 10px; border-radius: 5px; margin-bottom: 5px; cursor: pointer; font-size: 12px; }
-#diamond-rewards {
-    padding: 12px;
-    background: #172d40;
-    border-top: 2px solid #3c7896;
-    color: #edf7ff;
-}
-
-.diamond-heading {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-#diamond-wallet {
-    color: #7ee6ff;
-    font-weight: bold;
-}
-
-.diamond-description {
-    margin: 8px 0 12px;
-    font-size: 12px;
-    color: #b7ccdd;
-}
-
-#diamond-task-list {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-}
-
-.diamond-task {
-    padding: 12px;
-    background: #223e54;
-    border: 1px solid #466d87;
-    border-radius: 9px;
-}
-
-.diamond-task strong,
-.diamond-task span {
-    display: block;
-}
-
-.diamond-task span {
-    margin: 7px 0;
-    font-size: 12px;
-    color: #c9deec;
-}
-
-.diamond-task button {
-    width: 100%;
-    min-height: 40px;
-    border: none;
-    border-radius: 7px;
-    background: #087ba1;
-    color: white;
-    cursor: pointer;
-    touch-action: manipulation;
-}
-
-.diamond-task button:disabled {
-    background: #41566a;
-    color: #aebcca;
-    cursor: default;
-}
-
-#diamond-notice {
-    margin-top: 9px;
-    min-height: 18px;
-    font-size: 12px;
-    color: #ffe093;
-}
-
-@media (max-width: 600px) {
-    #diamond-task-list {
-        grid-template-columns: minmax(0, 1fr);
     }
 }
 </style>
