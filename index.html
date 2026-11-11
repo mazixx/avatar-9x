@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>AVATAR - XỨ SỞ KỲ DIỆU (HTML5 60FPS Edition)</title>
+<style>
+    * { box-sizing: border-box; user-select: none; font-family: 'Segoe UI', Tahoma, sans-serif; }
+    body { margin: 0; background: #121820; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+    #game-wrapper { width: 1040px; height: 660px; background: #1e272e; border-radius: 12px; box-shadow: 0 12px 35px rgba(0,0,0,0.7); display: flex; flex-direction: column; overflow: hidden; border: 2px solid #485460; }
+    
+    /* TOP BAR */
+    #top-bar { height: 48px; background: linear-gradient(90deg, #0f2027, #203a43, #2c5364); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 2px solid #f1c40f; }
+    .stat-box { font-size: 14px; font-weight: bold; color: #f1c40f; display: flex; gap: 18px; }
+    .stat-box span { background: rgba(0,0,0,0.35); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); }
+    .top-btns button { background: #8e44ad; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; margin-left: 6px; }
+    .top-btns button:hover { transform: scale(1.05); filter: brightness(1.15); }
+
+    /* NAV BAR */
+    #nav-bar { height: 44px; background: #2f3640; display: flex; align-items: center; justify-content: space-around; padding: 0 10px; border-bottom: 1px solid #353b48; }
+    .zone-btn { flex: 1; margin: 0 4px; padding: 7px 0; border: none; border-radius: 6px; font-weight: bold; color: white; cursor: pointer; transition: 0.2s; font-size: 13px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
+    .zone-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+
+    /* MAIN AREA */
+    #main-area { display: flex; flex: 1; height: 480px; }
+    #canvas-box { position: relative; width: 720px; height: 480px; background: #000; }
+    canvas { display: block; }
+
+    /* SIDEBAR */
+    #sidebar { width: 320px; background: #2c3e50; border-left: 2px solid #34495e; display: flex; flex-direction: column; padding: 10px; overflow-y: auto; }
+    .panel-title { background: #1a252f; color: #f1c40f; padding: 8px; text-align: center; font-weight: bold; border-radius: 6px; margin-bottom: 8px; font-size: 14px; letter-spacing: 0.5px; }
+    .action-btn { width: 100%; padding: 9px; margin-bottom: 6px; border: none; border-radius: 6px; font-weight: bold; color: white; cursor: pointer; transition: 0.15s; text-align: left; padding-left: 12px; font-size: 13px; box-shadow: 0 3px 0 rgba(0,0,0,0.3); }
+    .action-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .action-btn:active { transform: translateY(1px); box-shadow: none; }
+
+    /* WARDROBE LIST */
+    #wardrobe-box { margin-top: auto; background: #1e272e; padding: 8px; border-radius: 8px; border: 1px solid #485460; }
+    .wardrobe-list { max-height: 125px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+    .item-row { display: flex; justify-content: space-between; align-items: center; background: #2f3640; padding: 6px 10px; border-radius: 5px; font-size: 12px; cursor: pointer; transition: 0.15s; border: 1px solid transparent; }
+    .item-row:hover { border-color: #00a8ff; background: #353b48; }
+    .item-row.equipped { background: #192a56; border-color: #fbc531; color: #fbc531; font-weight: bold; }
+    .badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+
+    /* BOTTOM BAR */
+    #bottom-bar { height: 88px; background: #1a252f; border-top: 2px solid #34495e; padding: 8px 14px; display: flex; flex-direction: column; justify-content: space-between; }
+    #chat-row { display: flex; gap: 8px; align-items: center; }
+    #chat-input { flex: 1; padding: 7px 12px; border-radius: 6px; border: 1px solid #485460; background: #2f3640; color: white; font-size: 13px; outline: none; }
+    #chat-input:focus { border-color: #00a8ff; }
+    #log-box { font-size: 13px; color: #2ecc71; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .seed-radio { display: flex; align-items: center; gap: 6px; background: #34495e; padding: 6px 10px; border-radius: 5px; margin-bottom: 5px; cursor: pointer; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div id="game-wrapper">
+    <!-- Thanh chỉ số trên cùng -->
+    <div id="top-bar">
+        <div class="stat-box">
+            <span id="ui-name">👤 NôngDân9x</span>
+            <span id="ui-xu">💰 1,500 Xu</span>
+            <span id="ui-luong">💎 25 Lượng</span>
+            <span id="ui-spouse">❤️ Độc thân</span>
+        </div>
+        <div class="top-btns">
+            <button onclick="exchangeMoney()">💎 Đổi 5 Lượng ➔ 1000 Xu</button>
+            <button style="background:#27ae60" onclick="saveGame(true)">💾 Lưu Game</button>
+        </div>
+    </div>
+
+    <!-- Thanh chuyển khu vực -->
+    <div id="nav-bar">
+        <button class="zone-btn" style="background:#27ae60" onclick="changeZone('Nông Trại')">🏡 Nông Trại</button>
+        <button class="zone-btn" style="background:#e67e22" onclick="changeZone('Công Viên')">🌳 Công Viên (Đông vui)</button>
+        <button class="zone-btn" style="background:#2980b9" onclick="changeZone('Sinh Thái')">🎣 Khu Câu Cá</button>
+        <button class="zone-btn" style="background:#8e44ad" onclick="changeZone('Giải Trí')">🎰 Khu Giải Trí</button>
+        <button class="zone-btn" style="background:#c0392b" onclick="changeZone('Ngoại Ô')">🔨 Thợ Rèn Đập Đồ</button>
+    </div>
+
+    <!-- Khung giữa: Màn hình Canvas & Bảng điều khiển -->
+    <div id="main-area">
+        <div id="canvas-box">
+            <canvas id="gameCanvas" width="720" height="480"></canvas>
+        </div>
+        <div id="sidebar">
+            <div id="zone-controls"></div>
+            
+            <!-- Tủ đồ mặc/tháo tự do -->
+            <div id="wardrobe-box">
+                <div style="font-size:12px; font-weight:bold; color:#00a8ff; display:flex; justify-content:space-between;">
+                    <span>🎒 TỦ ĐỒ CÁ NHÂN</span>
+                    <span style="color:#aaa; font-weight:normal; font-size:11px;">(Click để Mặc / Tháo)</span>
+                </div>
+                <div class="wardrobe-list" id="wardrobe-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Khung dưới: Chat & Log -->
+    <div id="bottom-bar">
+        <div id="chat-row">
+            <span style="font-weight:bold; color:#f1c40f; font-size:13px;">💬 Chat:</span>
+            <input type="text" id="chat-input" placeholder="Nhập nội dung chat rồi nhấn Enter (Chửi thề 'dm, vcl, ngu' sẽ bị Cảnh Sát bắt đi tù!)..." onkeydown="if(event.key==='Enter') sendChat()">
+            <button class="action-btn" style="width:80px; margin:0; text-align:center; padding:7px; background:#0097e6;" onclick="sendChat()">Gửi</button>
+            <span style="font-size:11px; color:#bdc3c7;">🎮 Phím Mũi Tên / WASD để đi lại & câu cá</span>
+        </div>
+        <div id="log-box">🌟 Hệ thống: Chào mừng bạn trở về bầu trời tuổi thơ Avatar Teamobi!</div>
+    </div>
+</div>
+
+<script>
+// ================= CẤU HÌNH DỮ LIỆU =================
+const CROPS = {
+    "Hướng Dương": { cost: 50, sell: 130, time: 10, color: "#f1c40f", icon: "🌻" },
+    "Dưa Hấu":     { cost: 150, sell: 390, time: 18, color: "#2ecc71", icon: "🍉" },
+    "Cây Khế":     { cost: 400, sell: 1100, time: 30, color: "#badc58", icon: "⭐" }
+};
+
+const FISHES = [
+    { name: "Cá Rô Đồng", sell: 90, len: 3, rate: 0.45 },
+    { name: "Cá Lóc Bông", sell: 200, len: 4, rate: 0.35 },
+    { name: "Cá Chép Vàng", sell: 420, len: 5, rate: 0.15 },
+    { name: "Cá Mập Đại Dương", sell: 1200, len: 6, rate: 0.05 }
+];
+
+const SHOP_ITEMS = [
+    { id: "wing_angel", name: "Cánh Thiên Thần", type: "wing", color: "#ffffff" },
+    { id: "wing_devil", name: "Cánh Ác Quỷ", type: "wing", color: "#c0392b" },
+    { id: "hair_goku",  name: "Tóc Siêu Xayda", type: "hair", color: "#f1c40f" },
+    { id: "hat_magic",  name: "Mũ Ảo Thuật Gia", type: "hat", color: "#8e44ad" },
+    { id: "hat_crown",  name: "Vương Miện Vàng", type: "hat", color: "#f39c12" },
+    { id: "shirt_super",name: "Áo Siêu Nhân Đỏ", type: "shirt", color: "#e74c3c" },
+    { id: "shirt_vip",  name: "Áo Hoàng Gia Vàng", type: "shirt", color: "#f1c40f" }
+];
+
+const BAD_WORDS = ["dm", "vcl", "cc", "ngu", "hack", "đm", "chó"];
+
+// Trạng thái Người Chơi
+let player = {
+    name: "NôngDân9x", xu: 1500, luong: 25,
+    zone: "Nông Trại", x: 350, y: 310, vx: 0, vy: 0, dir: 1,
+    spouse: "Độc thân", lovePts: 0, jailTime: 0,
+    selectedSeed: "Hướng Dương",
+    inventory: [
+        { id: "wing_angel", name: "Cánh Thiên Thần", type: "wing", color: "#ffffff" },
+        { id: "hair_goku",  name: "Tóc Siêu Xayda", type: "hair", color: "#f1c40f" }
+    ],
+    equipped: { wing: "wing_angel", wingLvl: 1, hair: "hair_goku", hat: null, shirt: null },
+    plots: Array.from({length: 6}, () => ({ crop: null, plantedAt: 0, watered: false, pest: false }))
+};
+
+let chatBubble = { text: "Chào anh em 9x nha!", expire: Date.now() + 5000 };
+let keys = {};
+let tick = 0;
+
+// Trạng thái Câu Cá
+let fishing = { state: "IDLE", timer: 0, seq: [], userSeq: [], fish: null };
+
+// Hiệu ứng Môi trường (Mây, Nước phun, Hoa bay)
+let clouds = Array.from({length: 5}, (_, i) => ({ x: i * 160, y: 20 + (i%2)*25, s: 0.3 + Math.random()*0.3 }));
+let particles = [];
+
+// Danh sách NPC đông đúc ở các khu vực
+let npcs = [
+    // Khu Công Viên (Đông vui, hẹn hò)
+    { zone: "Công Viên", name: "Bé_Kẹo_Mút_9x", x: 240, y: 260, baseX: 240, shirt: "#fd79a8", wing: "wing_angel", wingLvl: 6, hair: null, hat: "hat_crown", isLover: true,
+      chats: ["Tuyển ox chung thủy, ko cần giàu <3", "Ngồi ghế đá công viên mát quá!", "Ai tặng hoa hồng cho em đi 🌹"], bubble: null },
+    { zone: "Công Viên", name: "Boy_Nhà_Nghèo", x: 460, y: 320, baseX: 460, shirt: "#3498db", wing: null, wingLvl: 0, hair: "hair_goku", hat: null,
+      chats: ["Tuyển bx biết chăm nông trại!", "Mới bị trộm hết vườn khế rồi huhu", "Ai solo tiến lên không?"], bubble: null },
+    { zone: "Công Viên", name: "Công_Chúa_Bong_Bóng", x: 140, y: 350, baseX: 140, shirt: "#9b59b6", wing: "wing_devil", wingLvl: 4, hair: null, hat: null,
+      chats: ["Bộ đồ quay số đẹp quá đi!", "Tìm người kết hôn tại Lễ Đường 💍", "Chào cả nhà buổi sáng nha!"], bubble: null },
+    { zone: "Công Viên", name: "Lãng_Tử_Độc_Thân", x: 580, y: 280, baseX: 580, shirt: "#2ecc71", wing: "wing_angel", wingLvl: 8, hair: "hair_goku", hat: "hat_magic",
+      chats: ["Cánh +8 phát sáng rực rỡ luôn!", "Đứng công viên treo nick cả ngày 😎", "Có ai nhớ bản Mod WapVip ko?"], bubble: null },
+
+    // Khu Sinh Thái (Nhiều người đứng câu cá)
+    { zone: "Sinh Thái", name: "Ông_Trùm_Câu_Cá", x: 180, y: 235, baseX: 180, isFishing: true, shirt: "#e67e22", wing: null, wingLvl: 0, hair: null, hat: "hat_magic",
+      chats: ["Vừa giật được con Cá Mập 1200 Xu!", "Treo Auto câu cá từ tối qua tới giờ", "Hồ này nhiều cá chép vàng lắm ae"], bubble: null },
+    { zone: "Sinh Thái", name: "Nông_Dân_Chăm_Chỉ", x: 430, y: 235, baseX: 430, isFishing: true, shirt: "#27ae60", wing: "wing_angel", wingLvl: 2, hair: null, hat: null,
+      chats: ["Mỏi tay bấm phím mũi tên quá!", "Lại đứt dây câu rồi tiếc ghê", "Ráng câu kiếm tiền mua hạt giống Khế"], bubble: null },
+    { zone: "Sinh Thái", name: "HotGirl_Miền_Tây", x: 550, y: 235, baseX: 550, isFishing: true, shirt: "#e84393", wing: "wing_devil", wingLvl: 5, hair: null, hat: "hat_crown",
+      chats: ["Câu cá giải trí cuối tuần 🎣", "Cá cắn câu liên tục vui quá!", "Ai chỉ mình cách câu cá mập với"], bubble: null },
+
+    // Khu Giải Trí (Sòng bài, Quay số đông đúc)
+    { zone: "Giải Trí", name: "Đại_Gia_Server", x: 200, y: 310, baseX: 200, shirt: "#f1c40f", wing: "wing_angel", wingLvl: 10, hair: "hair_goku", hat: "hat_crown",
+      chats: ["Mới nạp 100 Lượng quay hết sạch đồ VIP!", "Tài hay Xỉu đây anh em ơi 🎲", "Ai cần tặng quà kết bạn nha!"], bubble: null },
+    { zone: "Giải Trí", name: "Thần_Bài_9x", x: 510, y: 320, baseX: 510, shirt: "#e74c3c", wing: "wing_devil", wingLvl: 7, hair: null, hat: "hat_magic",
+      chats: ["Đặt Tài ăn thông 5 ván liền!", "Quay số mãi chưa trúng Cánh Thiên Thần", "Vào sòng bài làm giàu không khó!"], bubble: null },
+    { zone: "Giải Trí", name: "Nhóc_Siêu_Quậy", x: 350, y: 370, baseX: 350, shirt: "#00a8ff", wing: null, wingLvl: 0, hair: "hair_goku", hat: null,
+      chats: ["Thua hết Xu rồi về trồng hướng dương thôi 😂", "Nhìn cánh +10 của Đại Gia mê quá", "Quay số 5 Lượng hồi hộp ghê!"], bubble: null },
+
+    // Khu Ngoại Ô (Ông Thợ Rèn)
+    { zone: "Ngoại Ô", name: "Thợ_Rèn_Huyền_Thoại", x: 360, y: 230, baseX: 360, isStatic: true, shirt: "#7f8c8d", wing: null, wingLvl: 0, hair: null, hat: null,
+      chats: ["Đập đồ lên +10 không sợ xịt nào!", "Mang Cánh lại đây ta rèn cho!", "Lửa lò rèn hôm nay đang rất đỏ!"], bubble: null }
+];
+
+// ================= KHỞI TẠO & ĐIỀU KHIỂN =================
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+window.addEventListener("keydown", e => {
+    if (document.activeElement.id === "chat-input") return;
+    keys[e.key] = true;
+    handleFishingKey(e.key);
+});
+window.addEventListener("keyup", e => keys[e.key] = false);
+
+canvas.addEventListener("mousedown", e => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    if (player.zone === "Nông Trại" && player.jailTime <= 0) {
+        for (let i = 0; i < 6; i++) {
+            let r = Math.floor(i / 3), c = i % 3;
+            let px = 65 + c * 125, py = 190 + r * 125;
+            if (mx >= px && mx <= px + 105 && my >= py && my <= py + 95) {
+                interactPlot(i);
+                return;
+            }
+        }
+    }
+});
+
+function log(msg, color = "#2ecc71") {
+    const box = document.getElementById("log-box");
+    box.style.color = color;
+    box.innerText = "🌟 " + msg;
+}
+
+// ================= QUẢN LÝ TỦ ĐỒ (MẶC & THÁO TỰ DO) =================
+function renderWardrobe() {
+    const list = document.getElementById("wardrobe-list");
+    list.innerHTML = "";
+    if (player.inventory.length === 0) {
+        list.innerHTML = "<div style='color:#aaa; font-size:12px; text-align:center; padding:10px;'>Tủ đồ trống! Hãy qua Khu Giải Trí để Quay Số.</div>";
+        return;
+    }
+    player.inventory.forEach(item => {
+        const isEq = player.equipped[item.type] === item.id;
+        const div = document.createElement("div");
+        div.className = "item-row" + (isEq ? " equipped" : "");
+        let extra = (item.type === "wing" && player.equipped.wingLvl > 0) ? ` (+${player.equipped.wingLvl})` : "";
+        div.innerHTML = `
+            <span>✨ ${item.name}${extra}</span>
+            <span class="badge" style="background:${isEq ? '#e1b12c' : '#718093'}; color:${isEq ? '#000' : '#fff'}">
+                ${isEq ? 'Đang mặc (Click tháo)' : 'Mặc vào'}
+            </span>
+        `;
+        div.onclick = () => toggleEquip(item);
+        list.appendChild(div);
+    });
+}
+
+function toggleEquip(item) {
+    if (player.equipped[item.type] === item.id) {
+        player.equipped[item.type] = null;
+        log(`Đã tháo [${item.name}] cất vào tủ đồ!`, "#00a8ff");
+    } else {
+        player.equipped[item.type] = item.id;
+        log(`Đã mặc [${item.name}] lên người! Nhìn cực ngầu!`, "#f1c40f");
+    }
+    renderWardrobe();
+    renderSidebar();
+}
+
+// ================= GIAO DIỆN SIDEBAR THEO KHU VỰC =================
+function changeZone(z) {
+    if (player.jailTime > 0) {
+        log("Bạn đang bị giam trong Nhà Tù! Không thể di chuyển!", "#e74c3c");
+        return;
+    }
+    fishing.state = "IDLE";
+    player.zone = z;
+    player.x = 350;
+    player.y = (z === "Sinh Thái") ? 235 : 320;
+    renderSidebar();
+    log(`Đã bước vào khu vực: ${z}`);
+}
+
+function renderSidebar() {
+    const box = document.getElementById("zone-controls");
+    const z = player.jailTime > 0 ? "Nhà Tù" : player.zone;
+    let html = `<div class="panel-title">📍 ${z.toUpperCase()}</div>`;
+
+    if (z === "Nông Trại") {
+        html += `<div style="font-size:12px; margin-bottom:6px; color:#dcdde1;">Chọn hạt giống (Click vào ô đất để trồng):</div>`;
+        for (let [cName, info] of Object.entries(CROPS)) {
+            let chk = player.selectedSeed === cName ? "checked" : "";
+            html += `
+                <label class="seed-radio" onclick="player.selectedSeed='${cName}'; renderSidebar();">
+                    <input type="radio" name="seed" ${chk}>
+                    <span>${info.icon} <b>${cName}</b> (${info.cost} Xu - ${info.time}s)</span>
+                </label>`;
+        }
+        html += `
+            <button class="action-btn" style="background:#e67e22; margin-top:8px;" onclick="autoFarm()">⚡ Auto Farm WapVip (Chăm 1 chạm)</button>
+            <button class="action-btn" style="background:#34495e;" onclick="stealNeighbor()">🥷 Qua nhà hàng xóm Hái Trộm</button>
+        `;
+    } else if (z === "Công Viên") {
+        html += `
+            <div style="background:#1e272e; padding:8px; border-radius:6px; margin-bottom:8px; font-size:12px;">
+                💖 Tán tỉnh NPC: <b style="color:#fd79a8">Bé_Kẹo_Mút_9x</b><br>
+                Điểm thân mật: <b style="color:#f1c40f">${player.lovePts} / 100</b>
+            </div>
+            <button class="action-btn" style="background:#e84393" onclick="dateAction('rose')">🌹 Tặng Hoa Hồng (-100 Xu, +15 Tim)</button>
+            <button class="action-btn" style="background:#fd79a8; color:#000" onclick="dateAction('kiss')">💋 Hôn ghế đá công viên (+5 Tim)</button>
+            <button class="action-btn" style="background:#c0392b" onclick="dateAction('marry')">💍 Tổ chức Đám Cưới (100 Tim & 1000 Xu)</button>
+        `;
+    } else if (z === "Sinh Thái") {
+        html += `
+            <div style="font-size:12px; color:#dcdde1; margin-bottom:8px;">
+                Đứng trên cầu gỗ và quăng cần! Khi cá cắn câu, hãy bấm các phím mũi tên <b>↑ ↓ ← →</b> thật chuẩn!
+            </div>
+            <button class="action-btn" style="background:#0097e6" onclick="startFishing()">🎣 Quăng Cần Câu Cá (-20 Xu)</button>
+            <button class="action-btn" style="background:#16a085" onclick="autoFishing()">🤖 Bật Auto Câu Cá (-50 Xu / Tự giật 100%)</button>
+        `;
+    } else if (z === "Giải Trí") {
+        html += `
+            <div style="font-size:12px; color:#dcdde1; margin-bottom:8px;">Thử vận may trúng Cánh, Vương Miện, Áo Siêu Nhân:</div>
+            <button class="action-btn" style="background:#8e44ad" onclick="spinGacha()">🎡 Quay Số Kỳ Diệu (-5 Lượng)</button>
+            <button class="action-btn" style="background:#d35400" onclick="playTaiXiu('TAI')">🎲 Đặt Cược TÀI (-200 Xu)</button>
+            <button class="action-btn" style="background:#2980b9" onclick="playTaiXiu('XIU')">🎲 Đặt Cược XỈU (-200 Xu)</button>
+        `;
+    } else if (z === "Ngoại Ô") {
+        let wId = player.equipped.wing;
+        let wObj = SHOP_ITEMS.find(i => i.id === wId);
+        let lvl = player.equipped.wingLvl;
+        let rate = Math.max(15, 100 - lvl * 10);
+        let cost = (lvl + 1) * 300;
+        html += `
+            <div style="background:#1e272e; padding:8px; border-radius:6px; margin-bottom:8px; font-size:12px;">
+                🕊️ Cánh đang mặc: <b style="color:#f1c40f">${wObj ? wObj.name : 'Chưa mặc cánh'} (+${lvl})</b><br>
+                🔥 Tỷ lệ lên +${lvl+1}: <b style="color:#2ecc71">${rate}%</b><br>
+                💰 Chi phí: <b>${cost} Xu + 2 Lượng</b><br>
+                <span style="color:#aaa; font-size:11px;">(Đập lên +5 sẽ mở khóa Hào Quang phát sáng!)</span>
+            </div>
+            <button class="action-btn" style="background:#e74c3c" onclick="upgradeWing()">🔨 ĐẬP CÁNH LÊN +${lvl+1} NGAY!</button>
+        `;
+    } else if (z === "Nhà Tù") {
+        html += `
+            <div style="color:#ff6b6b; font-size:13px; margin-bottom:10px; font-weight:bold;">
+                🚔 Bạn đang bị giam vì phát ngôn thiếu văn hóa nơi công cộng!
+            </div>
+            <button class="action-btn" style="background:#e67e22" onclick="bribeJail()">💰 Hối lộ Cai Ngục (-300 Xu để ra tù)</button>
+        `;
+    }
+    box.innerHTML = html;
+}
+
+// ================= LOGIC GAMEPLAY =================
+function interactPlot(idx) {
+    let p = player.plots[idx];
+    let now = Date.now() / 1000;
+    if (!p.crop) {
+        let ci = CROPS[player.selectedSeed];
+        if (player.xu < ci.cost) return log("Không đủ Xu mua hạt giống!", "#e74c3c");
+        player.xu -= ci.cost;
+        p.crop = player.selectedSeed;
+        p.plantedAt = now;
+        p.watered = true;
+        p.pest = false;
+        log(`Đã gieo hạt ${p.crop} vào ô đất số ${idx + 1}!`);
+    } else {
+        let ci = CROPS[p.crop];
+        let elapsed = now - p.plantedAt;
+        if (elapsed >= ci.time) {
+            let reward = p.pest ? Math.floor(ci.sell * 0.75) : ci.sell;
+            player.xu += reward;
+            spawnFloatingText(`+${reward} Xu`, 110 + (idx%3)*125, 220 + Math.floor(idx/3)*125, "#f1c40f");
+            log(`Thu hoạch ${p.crop} bán được +${reward} Xu!`, "#f1c40f");
+            p.crop = null;
+        } else if (p.pest || !p.watered) {
+            p.pest = false; p.watered = true; p.plantedAt -= 2;
+            log(`Đã tưới nước & bắt sâu ô đất ${idx + 1}! Cây lớn nhanh hơn!`);
+        } else {
+            log(`${p.crop} đang phát triển, còn ${Math.ceil(ci.time - elapsed)} giây nữa chín!`);
+        }
+    }
+}
+
+function autoFarm() {
+    let now = Date.now() / 1000, count = 0;
+    player.plots.forEach(p => {
+        if (p.crop) {
+            let ci = CROPS[p.crop];
+            if (now - p.plantedAt >= ci.time) {
+                player.xu += ci.sell; p.crop = null; count++;
+            } else if (p.pest || !p.watered) {
+                p.pest = false; p.watered = true; count++;
+            }
+        }
+        if (!p.crop) {
+            let ci = CROPS[player.selectedSeed];
+            if (player.xu >= ci.cost) {
+                player.xu -= ci.cost; p.crop = player.selectedSeed;
+                p.plantedAt = now; p.watered = true; p.pest = false; count++;
+            }
+        }
+    });
+    log(`⚡ Auto Farm WapVip.Pro: Đã tự động xử lý ${count} ô đất trong 1 nốt nhạc!`, "#f1c40f");
+}
+
+function stealNeighbor() {
+    if (Math.random() < 0.35) {
+        let lost = Math.min(player.xu, 120);
+        player.xu -= lost;
+        log(`🐕 Toang! Bị chó Becgie nhà hàng xóm rượt cắn mất -${lost} Xu tiền thuốc!`, "#e74c3c");
+    } else {
+        let gain = 120 + Math.floor(Math.random() * 180);
+        player.xu += gain;
+        log(`🥷 Lẻn qua nhà hàng xóm hái trộm Dưa Hấu & Khế bán được +${gain} Xu!`, "#f1c40f");
+    }
+}
+
+function dateAction(type) {
+    let lover = npcs.find(n => n.isLover);
+    if (type === "rose") {
+        if (player.xu < 100) return log("Không đủ 100 Xu mua hoa hồng!", "#e74c3c");
+        player.xu -= 100;
+        player.lovePts = Math.min(100, player.lovePts + 15);
+        if (lover) lover.bubble = { text: "Hoa đẹp quá! Yêu anh nhất trên đời <3", expire: Date.now() + 4000 };
+        spawnFloatingText("❤️ +15 Tim", lover.x, lover.y - 50, "#ff4757");
+        log("Đã tặng hoa hồng cho Bé_Kẹo_Mút_9x (+15 điểm thân mật)!");
+    } else if (type === "kiss") {
+        player.lovePts = Math.min(100, player.lovePts + 5);
+        if (lover) lover.bubble = { text: "Chụt chụt 😘 Ngại quá đi mất!", expire: Date.now() + 4000 };
+        spawnFloatingText("💋 +5 Tim", lover.x, lover.y - 50, "#ff6b81");
+        log("Ngồi ghế đá công viên hôn nhau lãng mạn (+5 điểm thân mật)!");
+    } else if (type === "marry") {
+        if (player.lovePts < 100) return log(`Cần đủ 100 điểm thân mật mới cưới được! (Hiện có: ${player.lovePts})`, "#e74c3c");
+        if (player.xu < 1000) return log("Cần 1000 Xu đặt tiệc tại Lễ Đường!", "#e74c3c");
+        player.xu -= 1000;
+        player.spouse = "Bé_Kẹo_Mút_9x";
+        log("💍 CHÚC MỪNG! Bạn và Bé_Kẹo_Mút_9x đã chính thức thành Vợ Chồng!", "#f1c40f");
+    }
+    renderSidebar();
+}
+
+function startFishing() {
+    if (player.xu < 20) return log("Không đủ 20 Xu mua mồi câu!", "#e74c3c");
+    player.xu -= 20;
+    player.x = 310; player.y = 235; // Đứng vào vị trí cầu câu
+    fishing.state = "WAITING";
+    fishing.timer = Date.now() + 1500 + Math.random() * 2000;
+    log("🎣 Đã quăng cần! Hãy nhìn kỹ mặt nước chờ cá cắn câu...");
+}
+
+function autoFishing() {
+    if (player.xu < 50) return log("Cần 50 Xu để bật Auto Câu Cá!", "#e74c3c");
+    player.xu -= 50;
+    let f = pickFish();
+    player.xu += f.sell;
+    spawnFloatingText(`+${f.sell} Xu (${f.name})`, player.x, player.y - 50, "#f1c40f");
+    log(`🤖 Auto Câu Cá: Giật thành công [${f.name}] bán lấy +${f.sell} Xu!`, "#f1c40f");
+}
+
+function pickFish() {
+    let r = Math.random(), acc = 0;
+    for (let f of FISHES) { acc += f.rate; if (r <= acc) return f; }
+    return FISHES[0];
+}
+
+function handleFishingKey(key) {
+    if (fishing.state !== "BITING") return;
+    const map = { "ArrowUp": "↑", "w": "↑", "W": "↑", "ArrowDown": "↓", "s": "↓", "S": "↓", "ArrowLeft": "←", "a": "←", "A": "←", "ArrowRight": "→", "d": "→", "D": "→" };
+    if (!map[key]) return;
+    let pressed = map[key];
+    let expected = fishing.seq[fishing.userSeq.length];
+    if (pressed === expected) {
+        fishing.userSeq.push(pressed);
+        if (fishing.userSeq.length === fishing.seq.length) {
+            player.xu += fishing.fish.sell;
+            spawnFloatingText(`+${fishing.fish.sell} Xu!`, player.x, player.y - 60, "#f1c40f");
+            log(`🐟 TUYỆT ĐỈNH! Bạn đã kéo lên [${fishing.fish.name}] bán được +${fishing.fish.sell} Xu!`, "#f1c40f");
+            fishing.state = "IDLE";
+        }
+    } else {
+        fishing.state = "IDLE";
+        log("💦 Bấm sai phím mũi tên! Cá vùng vẫy đứt dây chạy mất rồi!", "#e74c3c");
+    }
+}
+
+function spinGacha() {
+    if (player.luong < 5) return log("Không đủ 5 Lượng! Hãy bấm nút Đổi Lượng ở góc trên!", "#e74c3c");
+    player.luong -= 5;
+    let item = SHOP_ITEMS[Math.floor(Math.random() * SHOP_ITEMS.length)];
+    if (!player.inventory.some(i => i.id === item.id)) {
+        player.inventory.push(item);
+        player.equipped[item.type] = item.id; // Tự động mặc luôn
+        log(`🎉 QUAY SỐ TRÚNG LỚN: Nhận được [${item.name}] vĩnh viễn!`, "#f1c40f");
+    } else {
+        player.xu += 600;
+        log(`🎡 Trúng [${item.name}] (Đã có trong tủ đồ) ➔ Quy đổi thành +600 Xu!`, "#00a8ff");
+    }
+    renderWardrobe();
+    renderSidebar();
+}
+
+function playTaiXiu(bet) {
+    if (player.xu < 200) return log("Cần tối thiểu 200 Xu để đặt cược!", "#e74c3c");
+    let d1 = 1 + Math.floor(Math.random()*6), d2 = 1 + Math.floor(Math.random()*6), d3 = 1 + Math.floor(Math.random()*6);
+    let sum = d1 + d2 + d3;
+    let res = sum >= 11 ? "TAI" : "XIU";
+    if (bet === res) {
+        player.xu += 200;
+        spawnFloatingText("+200 Xu", player.x, player.y - 50, "#2ecc71");
+        log(`🎲 Xúc xắc: ${d1}-${d2}-${d3} (Tổng ${sum}: ${res}) ➔ BẠN THẮNG +200 Xu!`, "#f1c40f");
+    } else {
+        player.xu -= 200;
+        spawnFloatingText("-200 Xu", player.x, player.y - 50, "#e74c3c");
+        log(`🎲 Xúc xắc: ${d1}-${d2}-${d3} (Tổng ${sum}: ${res}) ➔ BẠN THUA -200 Xu!`, "#e74c3c");
+    }
+}
+
+function upgradeWing() {
+    if (!player.equipped.wing) return log("Bạn đang tháo Cánh! Hãy bấm vào Tủ Đồ mặc Cánh lên trước khi đập!", "#e74c3c");
+    let lvl = player.equipped.wingLvl;
+    if (lvl >= 10) return log("Cánh đã đạt cấp tối đa +10 Thần Thoại!", "#f1c40f");
+    let cost = (lvl + 1) * 300;
+    if (player.xu < cost || player.luong < 2) return log(`Cần ${cost} Xu và 2 Lượng để đập cánh!`, "#e74c3c");
+    player.xu -= cost; player.luong -= 2;
+    let rate = Math.max(15, 100 - lvl * 10);
+    if (Math.random() * 100 <= rate) {
+        player.equipped.wingLvl++;
+        spawnFloatingText(`LÊN CẤP +${player.equipped.wingLvl}!`, player.x, player.y - 60, "#f1c40f");
+        log(`🔨 ĐẬP THÀNH CÔNG RỰC RỠ! Cánh đã lên cấp +${player.equipped.wingLvl}!`, "#f1c40f");
+    } else {
+        spawnFloatingText("XỊT RỒI 💥", player.x, player.y - 60, "#e74c3c");
+        log(`💥 XỊT RỒI! Thợ rèn đập trượt tay, may mà không bị tụt cấp!`, "#e74c3c");
+    }
+    renderWardrobe();
+    renderSidebar();
+}
+
+function sendChat() {
+    let inp = document.getElementById("chat-input");
+    let txt = inp.value.trim();
+    if (!txt) return;
+    inp.value = "";
+    chatBubble = { text: txt, expire: Date.now() + 4500 };
+
+    if (BAD_WORDS.some(w => txt.toLowerCase().includes(w))) {
+        player.jailTime = 15;
+        fishing.state = "IDLE";
+        renderSidebar();
+        log("🚔 Cảnh Sát: Bạn bị bắt giam vào Nhà Tù 15 giây vì nói tục chửi thề!", "#e74c3c");
+    } else {
+        log(`${player.name}: ${txt}`);
+    }
+}
+
+function bribeJail() {
+    if (player.xu < 300) return log("Không đủ 300 Xu để nộp phạt!", "#e74c3c");
+    player.xu -= 300;
+    player.jailTime = 0;
+    changeZone("Công Viên");
+    log("Đã nộp phạt 300 Xu và được thả tự do!");
+}
+
+function exchangeMoney() {
+    if (player.luong >= 5) {
+        player.luong -= 5; player.xu += 1000;
+        log("💎 Đã đổi 5 Lượng lấy +1,000 Xu!", "#f1c40f");
+    } else if (player.xu >= 1000) {
+        player.xu -= 1000; player.luong += 5;
+        log("💎 Đã mua +5 Lượng bằng 1,000 Xu!", "#00a8ff");
+    } else {
+        log("Cần ít nhất 5 Lượng hoặc 1,000 Xu để giao dịch!", "#e74c3c");
+    }
+}
+
+function spawnFloatingText(text, x, y, color) {
+    particles.push({ text, x, y, vy: -1.2, alpha: 1, color });
+}
+
+// ================= VẼ ĐỒ HỌA 2D & HOẠT ẢNH 60FPS =================
+function drawSkyAndClouds(skyTop, skyBot) {
+    let grad = ctx.createLinearGradient(0, 0, 0, 140);
+    grad.addColorStop(0, skyTop);
+    grad.addColorStop(1, skyBot);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 720, 140);
+
+    // Vẽ mây trôi
+    ctx.fillStyle = "rgba(255,255,255,0.8)";
+    clouds.forEach(c => {
+        c.x += c.s;
+        if (c.x > 760) c.x = -60;
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, 18, 0, Math.PI * 2);
+        ctx.arc(c.x + 15, c.y - 6, 22, 0, Math.PI * 2);
+        ctx.arc(c.x + 32, c.y, 16, 0, Math.PI * 2);
+        ctx.fill();
+    });
+}
+
+function drawCharacter(x, y, name, opts) {
+    let isMoving = opts.isMoving || false;
+    let bob = isMoving ? Math.abs(Math.sin(tick * 0.25)) * 4 : Math.sin(tick * 0.08) * 1.5;
+    let legSwing = isMoving ? Math.sin(tick * 0.25) * 6 : 0;
+
+    // 1. Bóng đổ dưới chân
+    ctx.fillStyle = "rgba(0,0,0,0.28)";
+    ctx.beginPath();
+    ctx.ellipse(x, y + 28, 18, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. Hào quang (Aura) nếu Cánh >= +5
+    if (opts.wing && opts.wingLvl >= 5) {
+        ctx.save();
+        ctx.strokeStyle = opts.wingLvl >= 8 ? "#f1c40f" : "#00d2d3";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(x, y + 26, 26 + Math.sin(tick*0.15)*4, 9, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // 3. Cánh vỗ (Flapping Animation)
+    if (opts.wing) {
+        let flap = Math.sin(tick * 0.18) * 10;
+        let isAngel = opts.wing === "wing_angel";
+        ctx.fillStyle = isAngel ? "#ffffff" : "#8b0000";
+        ctx.strokeStyle = opts.wingLvl >= 5 ? "#f1c40f" : "#222";
+        ctx.lineWidth = 2;
+
+        // Cánh trái
+        ctx.beginPath();
+        ctx.moveTo(x - 8, y - bob);
+        ctx.quadraticCurveTo(x - 48, y - 32 + flap - bob, x - 42, y + 12 - bob);
+        ctx.quadraticCurveTo(x - 25, y + 18 - bob, x - 8, y + 8 - bob);
+        ctx.fill(); ctx.stroke();
+
+        // Cánh phải
+        ctx.beginPath();
+        ctx.moveTo(x + 8, y - bob);
+        ctx.quadraticCurveTo(x + 48, y - 32 + flap - bob, x + 42, y + 12 - bob);
+        ctx.quadraticCurveTo(x + 25, y + 18 - bob, x + 8, y + 8 - bob);
+        ctx.fill(); ctx.stroke();
+
+        if (opts.wingLvl > 0) {
+            ctx.fillStyle = "#f1c40f";
+            ctx.font = "bold 11px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText(`✨+${opts.wingLvl}✨`, x, y - 48 - bob);
+        }
+    }
+
+    // 4. Chân bước đi
+    ctx.strokeStyle = "#2c3e50";
+    ctx.lineWidth = 5;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(x - 6, y + 15 - bob); ctx.lineTo(x - 6 - legSwing, y + 26);
+    ctx.moveTo(x + 6, y + 15 - bob); ctx.lineTo(x + 6 + legSwing, y + 26);
+    ctx.stroke();
+
+    // 5. Thân áo
+    ctx.fillStyle = opts.shirtColor || "#3498db";
+    ctx.strokeStyle = "#111";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(x - 13, y - 6 - bob, 26, 24, 6);
+    ctx.fill(); ctx.stroke();
+
+    // Biểu tượng chữ S nếu mặc Áo Siêu Nhân
+    if (opts.shirt === "shirt_super") {
+        ctx.fillStyle = "#f1c40f";
+        ctx.font = "bold 11px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("S", x, y + 10 - bob);
+    }
+
+    // 6. Đầu & Khuôn mặt Chibi
+    ctx.fillStyle = "#ffeaa7";
+    ctx.beginPath();
+    ctx.arc(x, y - 19 - bob, 15, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+
+    // Má hồng & Mắt chớp
+    ctx.fillStyle = "rgba(255, 107, 129, 0.55)";
+    ctx.beginPath();
+    ctx.arc(x - 8, y - 16 - bob, 3, 0, Math.PI * 2);
+    ctx.arc(x + 8, y - 16 - bob, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (tick % 120 < 115) {
+        ctx.fillStyle = "#111";
+        ctx.beginPath();
+        ctx.arc(x - 5, y - 20 - bob, 2.3, 0, Math.PI * 2);
+        ctx.arc(x + 5, y - 20 - bob, 2.3, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // 7. Tóc / Mũ / Vương Miện
+    if (opts.hair === "hair_goku") {
+        ctx.fillStyle = "#f1c40f";
+        ctx.beginPath();
+        ctx.moveTo(x - 15, y - 26 - bob);
+        ctx.lineTo(x - 22, y - 40 - bob);
+        ctx.lineTo(x - 8, y - 33 - bob);
+        ctx.lineTo(x, y - 48 - bob);
+        ctx.lineTo(x + 8, y - 33 - bob);
+        ctx.lineTo(x + 22, y - 40 - bob);
+        ctx.lineTo(x + 15, y - 26 - bob);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+    }
+    if (opts.hat === "hat_magic") {
+        ctx.fillStyle = "#8e44ad";
+        ctx.fillRect(x - 19, y - 33 - bob, 38, 5);
+        ctx.fillRect(x - 12, y - 48 - bob, 24, 15);
+        ctx.strokeRect(x - 12, y - 48 - bob, 24, 15);
+    } else if (opts.hat === "hat_crown") {
+        ctx.fillStyle = "#f1c40f";
+        ctx.beginPath();
+        ctx.moveTo(x - 12, y - 31 - bob);
+        ctx.lineTo(x - 14, y - 44 - bob);
+        ctx.lineTo(x - 5, y - 36 - bob);
+        ctx.lineTo(x, y - 46 - bob);
+        ctx.lineTo(x + 5, y - 36 - bob);
+        ctx.lineTo(x + 14, y - 44 - bob);
+        ctx.lineTo(x + 12, y - 31 - bob);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+    }
+
+    // Cần câu nếu NPC hoặc Người chơi đang câu cá
+    if (opts.isFishing) {
+        ctx.strokeStyle = "#d35400";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(x + 10, y + 2 - bob);
+        ctx.lineTo(x + 45, y + 35 - bob);
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(255,255,255,0.7)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x + 45, y + 35 - bob);
+        ctx.lineTo(x + 45, y + 95);
+        ctx.stroke();
+        // Phao câu nhấp nhô
+        let floatBob = Math.sin(tick * 0.15 + x) * 3;
+        ctx.fillStyle = "#e74c3c";
+        ctx.beginPath();
+        ctx.arc(x + 45, y + 95 + floatBob, 4, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // 8. Tên nhân vật
+    ctx.font = "bold 11px Tahoma";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    let tw = ctx.measureText(name).width + 10;
+    ctx.fillRect(x - tw/2, y + 31, tw, 16);
+    ctx.fillStyle = opts.isMain ? "#f1c40f" : "#ffffff";
+    ctx.fillText(name, x, y + 43);
+
+    // 9. Bong bóng chat
+    if (opts.bubble && Date.now() < opts.bubble.expire) {
+        let txt = opts.bubble.text;
+        ctx.font = "bold 11px Tahoma";
+        let bw = Math.max(60, ctx.measureText(txt).width + 18);
+        let bx = x - bw / 2, by = y - 78 - bob;
+        ctx.fillStyle = "rgba(255,255,255,0.95)";
+        ctx.strokeStyle = "#222";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(bx, by, bw, 24, 8);
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "#111";
+        ctx.fillText(txt, x, by + 16);
+    }
+}
+
+// ================= VẼ BỐI CẢNH TỪNG KHU VỰC =================
+function renderScene() {
+    ctx.clearRect(0, 0, 720, 480);
+    let z = player.jailTime > 0 ? "Nhà Tù" : player.zone;
+    let now = Date.now() / 1000;
+
+    if (z === "Nông Trại") {
+        drawSkyAndClouds("#48dbfb", "#c7ecee");
+        ctx.fillStyle = "#7bed9f";
+        ctx.fillRect(0, 140, 720, 340);
+
+        // Hàng rào gỗ trắng
+        ctx.fillStyle = "#ecf0f1";
+        for (let fx = 10; fx < 720; fx += 30) {
+            ctx.fillRect(fx, 122, 12, 26);
+        }
+        ctx.fillRect(0, 130, 720, 6);
+
+        // Ngôi nhà Nông Trại ấm cúng
+        ctx.fillStyle = "#f6e58d"; ctx.strokeStyle = "#d35400"; ctx.lineWidth = 2;
+        ctx.fillRect(500, 160, 170, 120); ctx.strokeRect(500, 160, 170, 120);
+        ctx.fillStyle = "#eb4d4b";
+        ctx.beginPath(); ctx.moveTo(485, 160); ctx.lineTo(585, 95); ctx.lineTo(685, 160); ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "#8b4513"; ctx.fillRect(565, 220, 40, 60);
+
+        // Vẽ 6 ô đất trồng cây
+        player.plots.forEach((p, i) => {
+            let r = Math.floor(i / 3), c = i % 3;
+            let px = 65 + c * 125, py = 190 + r * 125;
+            ctx.fillStyle = p.watered ? "#6d4c41" : "#a1887f";
+            ctx.strokeStyle = "#3e2723"; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.roundRect(px, py, 105, 95, 8); ctx.fill(); ctx.stroke();
+
+            ctx.textAlign = "center";
+            if (!p.crop) {
+                ctx.fillStyle = "rgba(255,255,255,0.6)";
+                ctx.font = "12px Tahoma";
+                ctx.fillText(`Ô đất ${i+1}`, px + 52, py + 45);
+                ctx.fillText(`(Click gieo hạt)`, px + 52, py + 62);
+            } else {
+                let ci = CROPS[p.crop];
+                let rem = Math.max(0, Math.ceil(ci.time - (now - p.plantedAt)));
+                let sway = Math.sin(tick * 0.1 + i) * 3;
+                if (rem === 0) {
+                    ctx.font = "28px Arial";
+                    ctx.fillText(ci.icon, px + 52 + sway, py + 42);
+                    ctx.fillStyle = "#f1c40f"; ctx.font = "bold 11px Tahoma";
+                    ctx.fillText("CHÍN RỒI! (Click)", px + 52, py + 76);
+                } else {
+                    ctx.font = "22px Arial";
+                    ctx.fillText("🌱", px + 52 + sway, py + 42);
+                    ctx.fillStyle = "#fff"; ctx.font = "bold 11px Tahoma";
+                    ctx.fillText(`${p.crop} (${rem}s)`, px + 52, py + 68);
+                    if (p.pest) {
+                        ctx.fillStyle = "#ff4757";
+                        ctx.fillText("🐛 Có sâu! Click!", px + 52, py + 85);
+                    }
+                }
+            }
+        });
+
+    } else if (z === "Công Viên") {
+        drawSkyAndClouds("#00a8ff", "#9c88ff");
+        ctx.fillStyle = "#badc58"; ctx.fillRect(0, 140, 720, 340);
+        // Đường dạo lát đá
+        ctx.fillStyle = "#95a5a6"; ctx.fillRect(0, 230, 720, 130);
+        // Ghế đá hẹn hò
+        ctx.fillStyle = "#d35400"; ctx.fillRect(190, 195, 100, 32);
+        ctx.strokeStyle = "#111"; ctx.strokeRect(190, 195, 100, 32);
+        ctx.fillStyle = "#fff"; ctx.font = "bold 11px Tahoma"; ctx.textAlign = "center";
+        ctx.fillText("Ghế Đá Tình Yêu", 240, 215);
+
+        // Đài phun nước động
+        ctx.fillStyle = "#2980b9";
+        ctx.beginPath(); ctx.ellipse(490, 200, 65, 28, 0, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = "#ecf0f1"; ctx.lineWidth = 4; ctx.stroke();
+        // Tia nước bắn lên
+        ctx.fillStyle = "#74b9ff";
+        for (let k = 0; k < 6; k++) {
+            let off = ((tick * 2 + k * 15) % 45);
+            ctx.beginPath();
+            ctx.arc(490 + Math.sin(k)*off*0.8, 195 - off, 4, 0, Math.PI*2);
+            ctx.fill();
+        }
+
+    } else if (z === "Sinh Thái") {
+        drawSkyAndClouds("#f39c12", "#f6e58d"); // Hoàng hôn khu câu cá
+        ctx.fillStyle = "#f6e58d"; ctx.fillRect(0, 140, 720, 110);
+        // Mặt hồ nước xanh biếc có gợn sóng
+        ctx.fillStyle = "#0984e3"; ctx.fillRect(0, 250, 720, 230);
+        ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.lineWidth = 2;
+        for (let wy = 280; wy < 460; wy += 40) {
+            for (let wx = 30; wx < 680; wx += 90) {
+                let shift = Math.sin(tick * 0.08 + wy) * 10;
+                ctx.beginPath(); ctx.moveTo(wx + shift, wy); ctx.lineTo(wx + 35 + shift, wy); ctx.stroke();
+            }
+        }
+        // Các cầu gỗ câu cá
+        [180, 310, 430, 550].forEach(bx => {
+            ctx.fillStyle = "#8b4513"; ctx.strokeStyle = "#3e2723";
+            ctx.fillRect(bx - 28, 210, 56, 65); ctx.strokeRect(bx - 28, 210, 56, 65);
+        });
+
+    } else if (z === "Giải Trí") {
+        drawSkyAndClouds("#2c3e50", "#8e44ad");
+        ctx.fillStyle = "#5f27cd"; ctx.fillRect(0, 140, 720, 340);
+        // Sàn nhảy caro phát sáng ở Khu Giải Trí
+        for (let r = 0; r < 5; r++) {
+            for (let c = 0; c < 12; c++) {
+                let glow = (r + c + Math.floor(tick / 18)) % 2 === 0;
+                ctx.fillStyle = glow ? "rgba(255, 255, 255, 0.14)" : "rgba(0, 0, 0, 0.2)";
+                ctx.fillRect(c * 60, 220 + r * 52, 60, 52);
+            }
+        }
+        // Bảng đèn Neon Casino & Vòng quay
+        ctx.fillStyle = "#1e272e";
+        ctx.strokeStyle = (tick % 30 < 15) ? "#f1c40f" : "#ff4757";
+        ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.roundRect(170, 145, 380, 65, 12); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "#f1c40f"; ctx.font = "bold 18px Tahoma"; ctx.textAlign = "center";
+        ctx.fillText("🎰 CASINO TÀI XỈU & VÒNG QUAY SỐ 🎡", 360, 184);
+
+    } else if (z === "Ngoại Ô") {
+        drawSkyAndClouds("#2f3640", "#718093");
+        ctx.fillStyle = "#636e72"; ctx.fillRect(0, 140, 720, 340);
+
+        // Lò rèn rực lửa
+        ctx.fillStyle = "#2d3436"; ctx.strokeStyle = "#d63031"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.roundRect(220, 145, 280, 75, 8); ctx.fill(); ctx.stroke();
+
+        // Hiệu ứng ngọn lửa cháy bập bùng
+        for (let f = 0; f < 8; f++) {
+            let fh = 15 + Math.sin(tick * 0.35 + f) * 10;
+            ctx.fillStyle = f % 2 === 0 ? "#e17055" : "#fdcb6e";
+            ctx.beginPath();
+            ctx.arc(275 + f * 24, 210, fh * 0.65, 0, Math.PI, true);
+            ctx.fill();
+        }
+        ctx.fillStyle = "#fff"; ctx.font = "bold 14px Tahoma"; ctx.textAlign = "center";
+        ctx.fillText("🔥 LÒ RÈN THỢ RÈN - ĐẬP CÁNH PHÁT SÁNG 🔥", 360, 175);
+
+    } else if (z === "Nhà Tù") {
+        ctx.fillStyle = "#2c3e50"; ctx.fillRect(0, 0, 720, 480);
+        ctx.fillStyle = "#1e272e"; ctx.fillRect(0, 320, 720, 160);
+    }
+
+    // ================= VẼ CÁC NPC ĐÔNG ĐÚC TRONG KHU VỰC =================
+    npcs.filter(n => n.zone === z).forEach((n, idx) => {
+        let npcMoving = false;
+        // Cho các NPC đi dạo qua lại tự nhiên (trừ NPC câu cá & Thợ rèn đứng yên)
+        if (!n.isFishing && !n.isStatic) {
+            let offset = Math.sin(tick * 0.02 + idx * 2) * 45;
+            n.x = n.baseX + offset;
+            npcMoving = Math.abs(Math.cos(tick * 0.02 + idx * 2)) > 0.25;
+        }
+        drawCharacter(n.x, n.y, n.name, {
+            isMoving: npcMoving,
+            shirtColor: n.shirt,
+            wing: n.wing,
+            wingLvl: n.wingLvl,
+            hair: n.hair,
+            hat: n.hat,
+            isFishing: n.isFishing,
+            bubble: n.bubble
+        });
+    });
+
+    // ================= VẼ NHÂN VẬT CHÍNH CỦA BẠN =================
+    let shirtItem = SHOP_ITEMS.find(i => i.id === player.equipped.shirt);
+    let pMoving = (player.vx !== 0 || player.vy !== 0);
+    drawCharacter(player.x, player.y, player.name, {
+        isMain: true,
+        isMoving: pMoving,
+        shirt: player.equipped.shirt,
+        shirtColor: shirtItem ? shirtItem.color : "#3498db",
+        wing: player.equipped.wing,
+        wingLvl: player.equipped.wingLvl,
+        hair: player.equipped.hair,
+        hat: player.equipped.hat,
+        isFishing: (z === "Sinh Thái" && fishing.state !== "IDLE"),
+        bubble: chatBubble
+    });
+
+    // ================= GIAO DIỆN MINI-GAME CÂU CÁ =================
+    if (z === "Sinh Thái") {
+        if (fishing.state === "WAITING") {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+            ctx.beginPath(); ctx.roundRect(220, 60, 280, 45, 8); ctx.fill();
+            ctx.fillStyle = "#00a8ff"; ctx.font = "bold 14px Tahoma"; ctx.textAlign = "center";
+            ctx.fillText("🎣 Đang chờ cá cắn câu...", 360, 88);
+
+            if (Date.now() >= fishing.timer) {
+                fishing.state = "BITING";
+                fishing.fish = pickFish();
+                const arrows = ["↑", "↓", "←", "→"];
+                fishing.seq = Array.from({length: fishing.fish.len}, () => arrows[Math.floor(Math.random() * 4)]);
+                fishing.userSeq = [];
+                fishing.timer = Date.now() + 5500;
+            }
+        } else if (fishing.state === "BITING") {
+            let rem = Math.max(0, ((fishing.timer - Date.now()) / 1000).toFixed(1));
+            ctx.fillStyle = "rgba(20, 30, 48, 0.92)";
+            ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.roundRect(150, 45, 420, 95, 12); ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = "#f1c40f"; ctx.font = "bold 14px Tahoma"; ctx.textAlign = "center";
+            ctx.fillText(`🐟 CÁ CẮN CÂU! BẤM PHÍM MŨI TÊN (${rem}s):`, 360, 72);
+
+            // Vẽ từng phím mũi tên
+            let startX = 360 - (fishing.seq.length * 44) / 2 + 22;
+            fishing.seq.forEach((k, i) => {
+                let done = i < fishing.userSeq.length;
+                ctx.fillStyle = done ? "#2ecc71" : "#34495e";
+                ctx.beginPath(); ctx.roundRect(startX + i * 44 - 18, 84, 36, 36, 6); ctx.fill();
+                ctx.fillStyle = "#ffffff"; ctx.font = "bold 20px Arial";
+                ctx.fillText(k, startX + i * 44, 109);
+            });
+
+            if (rem <= 0) {
+                fishing.state = "IDLE";
+                log("💦 Hết thời gian! Cá đã quẫy đuôi bơi mất!", "#e74c3c");
+            }
+        }
+    }
+
+    // ================= VẼ SONG SẮT NHÀ TÙ (NẾU BỊ BẮT) =================
+    if (z === "Nhà Tù") {
+        ctx.fillStyle = "#111";
+        for (let bx = 40; bx < 720; bx += 55) {
+            ctx.fillRect(bx, 0, 12, 480);
+        }
+        ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+        ctx.fillRect(140, 40, 440, 60);
+        ctx.fillStyle = "#ff4757"; ctx.font = "bold 18px Tahoma"; ctx.textAlign = "center";
+        ctx.fillText(`🚔 ĐANG NGỒI TÙ - CÒN ${player.jailTime} GIÂY`, 360, 77);
+    }
+
+    // ================= HIỆU ỨNG CHỮ BAY (FLOATING TEXT) =================
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let pt = particles[i];
+        pt.y += pt.vy;
+        pt.alpha -= 0.018;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, pt.alpha);
+        ctx.fillStyle = pt.color;
+        ctx.font = "bold 15px Tahoma";
+        ctx.textAlign = "center";
+        ctx.fillText(pt.text, pt.x, pt.y);
+        ctx.restore();
+        if (pt.alpha <= 0) particles.splice(i, 1);
+    }
+}
+
+// ================= CẬP NHẬT CHUYỂN ĐỘNG & LOGIC MỖI KHUNG HÌNH =================
+function updateLogic() {
+    tick++;
+
+    // Di chuyển nhân vật bằng phím Mũi tên hoặc WASD
+    player.vx = 0; player.vy = 0;
+    if (fishing.state === "IDLE") {
+        let speed = 3.2;
+        if (keys["ArrowLeft"] || keys["a"] || keys["A"]) player.vx = -speed;
+        if (keys["ArrowRight"] || keys["d"] || keys["D"]) player.vx = speed;
+        if (keys["ArrowUp"] || keys["w"] || keys["W"]) player.vy = -speed;
+        if (keys["ArrowDown"] || keys["s"] || keys["S"]) player.vy = speed;
+
+        player.x = Math.max(35, Math.min(685, player.x + player.vx));
+        player.y = Math.max(155, Math.min(430, player.y + player.vy));
+    }
+
+    // NPC tự động rao chat ngẫu nhiên tạo không khí sôi động
+    if (tick % 160 === 0) {
+        let zNpcs = npcs.filter(n => n.zone === player.zone);
+        if (zNpcs.length > 0) {
+            let randNpc = zNpcs[Math.floor(Math.random() * zNpcs.length)];
+            let msg = randNpc.chats[Math.floor(Math.random() * randNpc.chats.length)];
+            randNpc.bubble = { text: msg, expire: Date.now() + 4000 };
+        }
+    }
+
+    // Sâu cỏ xuất hiện ngẫu nhiên ở Nông Trại
+    if (tick % 300 === 0) {
+        player.plots.forEach(p => {
+            if (p.crop && !p.pest && Math.random() < 0.25) p.pest = true;
+        });
+    }
+
+    // Đếm ngược thời gian ngồi tù (60 frames = 1 giây)
+    if (player.jailTime > 0 && tick % 60 === 0) {
+        player.jailTime--;
+        if (player.jailTime <= 0) {
+            changeZone("Công Viên");
+            log("🎉 Bạn đã hết hạn tù và được trả tự do! Hãy chat lịch sự nhé!");
+        } else {
+            renderSidebar();
+        }
+    }
+
+    // Cập nhật thanh chỉ số Top Bar
+    document.getElementById("ui-name").innerText = `👤 ${player.name}`;
+    document.getElementById("ui-xu").innerText = `💰 ${player.xu.toLocaleString()} Xu`;
+    document.getElementById("ui-luong").innerText = `💎 ${player.luong} Lượng`;
+    document.getElementById("ui-spouse").innerText = `❤️ ${player.spouse}`;
+}
+
+// ================= LƯU & TẢI DỮ LIỆU GAME (LOCALSTORAGE) =================
+function saveGame(showMsg = false) {
+    try {
+        localStorage.setItem("avatar_html5_save", JSON.stringify(player));
+        if (showMsg) log("💾 Đã lưu dữ liệu game vào trình duyệt thành công!", "#f1c40f");
+    } catch (e) {}
+}
+
+function loadGame() {
+    try {
+        let saved = localStorage.getItem("avatar_html5_save");
+        if (saved) {
+            let data = JSON.parse(saved);
+            Object.assign(player, data);
+        }
+    } catch (e) {}
+}
+
+// ================= KHỞI CHẠY VÒNG LẶP 60FPS =================
+function gameLoop() {
+    updateLogic();
+    renderScene();
+    requestAnimationFrame(gameLoop);
+}
+
+loadGame();
+renderWardrobe();
+renderSidebar();
+requestAnimationFrame(gameLoop);
+setInterval(() => saveGame(false), 10000); // Tự động lưu mỗi 10 giây
+</script>
+</body>
+</html>
