@@ -130,8 +130,10 @@
     }
 }
 </style>
-<style>
+
 <title>AVATAR - XỨ SỞ KỲ DIỆU (HTML5 60FPS Edition)</title>
+
+<style>
 /* ===== GIAO DIỆN CHO GITHUB PAGES VÀ ĐIỆN THOẠI ===== */
 
 html {
@@ -356,6 +358,88 @@ button,
     }
 }
 </style>
+<style id="avatar-layout-fixes">
+    body {
+        display: block;
+        height: auto;
+        min-height: 100vh;
+        overflow: auto;
+    }
+
+    #game-wrapper {
+        width: min(1040px, 100%);
+        height: auto;
+        margin: 0 auto;
+    }
+
+    #top-bar,
+    #nav-bar,
+    #main-area,
+    #touch-controls,
+    #diamond-rewards,
+    #bottom-bar {
+        flex-shrink: 0;
+    }
+
+    #main-area {
+        display: grid;
+        grid-template-columns:
+            minmax(0, 9fr) minmax(0, 4fr);
+        height: auto;
+        flex: none;
+        min-width: 0;
+    }
+
+    #canvas-box {
+        width: 100%;
+        height: auto;
+        min-width: 0;
+        aspect-ratio: 3 / 2;
+    }
+
+    #gameCanvas {
+        display: block;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 3 / 2;
+    }
+
+    #sidebar {
+        width: 100%;
+        min-width: 0;
+        max-height: 480px;
+        overflow-y: auto;
+    }
+
+    #diamond-rewards,
+    #bottom-bar {
+        min-width: 0;
+    }
+
+    #diamond-task-list {
+        min-width: 0;
+    }
+
+    .diamond-task {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    #chat-input {
+        user-select: text;
+    }
+
+    @media (max-width: 900px) {
+        #main-area {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        #sidebar {
+            border-left: none;
+            border-top: 2px solid #34495e;
+            max-height: 400px;
+        }
+    }
 </style>
 </head>
 <body>
@@ -873,25 +957,63 @@ function interactPlot(idx) {
 }
 
 function autoFarm() {
-    let now = Date.now() / 1000, count = 0;
+    if (player.jailTime > 0 || player.zone !== "Nông Trại") {
+        return log(
+            "Bạn cần ở Nông Trại và không bị giam để Auto Farm.",
+            "#e74c3c"
+        );
+    }
+
+    const now = Date.now() / 1000;
+
+    let count = 0;
+    let harvested = 0;
+
     player.plots.forEach(p => {
         if (p.crop) {
-            let ci = CROPS[p.crop];
+            const ci = CROPS[p.crop];
+
             if (now - p.plantedAt >= ci.time) {
-                player.xu += ci.sell; p.crop = null; count++;
+                // Giữ cách tính tiền Auto Farm như bản gốc.
+                player.xu += ci.sell;
+
+                p.crop = null;
+                count++;
+                harvested++;
+
+                // Chỉ tính khi thực sự thu hoạch một ô.
+                DiamondRewards.track("harvest");
             } else if (p.pest || !p.watered) {
-                p.pest = false; p.watered = true; count++;
+                p.pest = false;
+                p.watered = true;
+                count++;
             }
         }
+
         if (!p.crop) {
-            let ci = CROPS[player.selectedSeed];
+            const ci = CROPS[player.selectedSeed];
+
             if (player.xu >= ci.cost) {
-                player.xu -= ci.cost; p.crop = player.selectedSeed;
-                p.plantedAt = now; p.watered = true; p.pest = false; count++;
+                player.xu -= ci.cost;
+
+                p.crop = player.selectedSeed;
+                p.plantedAt = now;
+                p.watered = true;
+                p.pest = false;
+
+                count++;
             }
         }
     });
-    log(`⚡ Auto Farm WapVip.Pro: Đã tự động xử lý ${count} ô đất trong 1 nốt nhạc!`, "#f1c40f");
+
+    log(
+        `⚡ Auto Farm: ${count} thao tác; `
+        + `thu hoạch thành công ${harvested} ô.`,
+        "#f1c40f"
+    );
+
+    updateTopBar();
+    saveGame(false);
 }
 
 function stealNeighbor() {
@@ -940,12 +1062,50 @@ function startFishing() {
 }
 
 function autoFishing() {
-    if (player.xu < 50) return log("Cần 50 Xu để bật Auto Câu Cá!", "#e74c3c");
+    if (player.jailTime > 0 || player.zone !== "Sinh Thái") {
+        return log(
+            "Bạn cần ở Khu Câu Cá và không bị giam.",
+            "#e74c3c"
+        );
+    }
+
+    if (fishing.state !== "IDLE") {
+        return log(
+            "Hãy kết thúc lượt câu hiện tại trước khi Auto Câu Cá.",
+            "#e67e22"
+        );
+    }
+
+    if (player.xu < 50) {
+        return log(
+            "Cần 50 Xu để Auto Câu Cá!",
+            "#e74c3c"
+        );
+    }
+
     player.xu -= 50;
-    let f = pickFish();
-    player.xu += f.sell;
-    spawnFloatingText(`+${f.sell} Xu (${f.name})`, player.x, player.y - 50, "#f1c40f");
-    log(`🤖 Auto Câu Cá: Giật thành công [${f.name}] bán lấy +${f.sell} Xu!`, "#f1c40f");
+
+    const fish = pickFish();
+
+    player.xu += fish.sell;
+
+    spawnFloatingText(
+        `+${fish.sell} Xu (${fish.name})`,
+        player.x,
+        player.y - 50,
+        "#f1c40f"
+    );
+
+    DiamondRewards.track("fish");
+
+    log(
+        `🤖 Auto Câu Cá: Bắt được [${fish.name}], `
+        + `bán lấy +${fish.sell} Xu!`,
+        "#f1c40f"
+    );
+
+    updateTopBar();
+    saveGame(false);
 }
 
 function pickFish() {
@@ -976,7 +1136,14 @@ function handleFishingKey(key) {
 }
 
 function spinGacha() {
-    if (player.luong < 5) return log("Không đủ 5 Lượng! Hãy bấm nút Đổi Lượng ở góc trên!", "#e74c3c");
+    if (player.luong < 5) {
+    return log(
+        "Không đủ 5 Lượng! "
+        + "Hãy hoàn thành nhiệm vụ ở bảng KIẾM KIM CƯƠNG.",
+        "#e74c3c"
+    );
+}
+
     player.luong -= 5;
     let item = SHOP_ITEMS[Math.floor(Math.random() * SHOP_ITEMS.length)];
     if (!player.inventory.some(i => i.id === item.id)) {
@@ -1523,6 +1690,24 @@ function renderScene() {
 }
 
 // ================= CẬP NHẬT CHUYỂN ĐỘNG & LOGIC MỖI KHUNG HÌNH =================
+function updateTopBar() {
+    const values = {
+        "ui-name": `👤 ${player.name}`,
+        "ui-xu": `💰 ${player.xu.toLocaleString("vi-VN")} Xu`,
+        "ui-luong": `💎 ${player.luong} Lượng`,
+        "ui-spouse": `❤️ ${player.spouse}`,
+        "diamond-wallet":
+            `💎 ${player.luong.toLocaleString("vi-VN")} Lượng`
+    };
+
+    for (const [id, text] of Object.entries(values)) {
+        const element = document.getElementById(id);
+
+        if (element && element.textContent !== text) {
+            element.textContent = text;
+        }
+    }
+}
 function updateLogic() {
     tick++;
 
@@ -1568,18 +1753,38 @@ function updateLogic() {
     }
 
     // Cập nhật thanh chỉ số Top Bar
-    document.getElementById("ui-name").innerText = `👤 ${player.name}`;
-    document.getElementById("ui-xu").innerText = `💰 ${player.xu.toLocaleString()} Xu`;
-    document.getElementById("ui-luong").innerText = `💎 ${player.luong} Lượng`;
-    document.getElementById("ui-spouse").innerText = `❤️ ${player.spouse}`;
+updateTopBar();
 }
 
 // ================= LƯU & TẢI DỮ LIỆU GAME (LOCALSTORAGE) =================
 function saveGame(showMsg = false) {
     try {
-        localStorage.setItem("avatar_html5_save", JSON.stringify(player));
-        if (showMsg) log("💾 Đã lưu dữ liệu game vào trình duyệt thành công!", "#f1c40f");
-    } catch (e) {}
+        localStorage.setItem(
+            "avatar_html5_save",
+            JSON.stringify(player)
+        );
+
+        if (showMsg) {
+            log(
+                "💾 Đã lưu dữ liệu game vào trình duyệt!",
+                "#f1c40f"
+            );
+        }
+
+        return true;
+    } catch (error) {
+        console.error("Không lưu được game:", error);
+
+        if (showMsg) {
+            log(
+                "⚠️ Không lưu được game. "
+                + "Hãy kiểm tra quyền lưu dữ liệu của trình duyệt.",
+                "#ff7675"
+            );
+        }
+
+        return false;
+    }
 }
 
 function loadGame() {
@@ -1983,14 +2188,23 @@ DiamondRewards.configure({
     get: () => player.luong,
 
     set: value => {
+        if (!Number.isSafeInteger(value) || value < 0) {
+            throw new Error("Số Lượng không hợp lệ.");
+        }
+
         player.luong = value;
     },
 
     save: () => {
-        saveGame(false);
+        if (!saveGame(false)) {
+            throw new Error(
+                "Không lưu được số dư sau khi nhận thưởng."
+            );
+        }
     },
 
     refresh: () => {
+        updateTopBar();
         renderSidebar();
     }
 });
