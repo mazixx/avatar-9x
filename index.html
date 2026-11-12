@@ -441,6 +441,16 @@ button,
         }
     }
 </style>
+<style>
+    /* Chỉ chặn cuộn/zoom bằng thao tác chạm trên màn hình game.
+       Các phần khác của trang vẫn cuộn bình thường. */
+    #gameCanvas {
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+    }
+</style>
 </head>
 <body>
 
@@ -486,40 +496,6 @@ button,
             </div>
         </div>
     </div>
-   
-    <!-- Điều khiển cảm ứng cho điện thoại -->
-<div id="touch-controls">
-    <div class="touch-pad"
-         role="group"
-         aria-label="Điều khiển nhân vật và câu cá">
-
-        <button type="button"
-                class="touch-up"
-                data-game-key="ArrowUp"
-                aria-label="Lên">↑</button>
-
-        <button type="button"
-                class="touch-left"
-                data-game-key="ArrowLeft"
-                aria-label="Trái">←</button>
-
-        <button type="button"
-                class="touch-down"
-                data-game-key="ArrowDown"
-                aria-label="Xuống">↓</button>
-
-        <button type="button"
-                class="touch-right"
-                data-game-key="ArrowRight"
-                aria-label="Phải">→</button>
-    </div>
-
-    <div class="touch-hint">
-        Giữ nút để di chuyển.<br>
-        Khi cá cắn câu, chạm lần lượt các hướng được yêu cầu.<br>
-        Ở nông trại, chạm ô đất để trồng hoặc thu hoạch.
-    </div>
-</div>
 
 <section id="diamond-rewards">
     <div class="diamond-heading">
@@ -542,7 +518,9 @@ button,
             <span style="font-weight:bold; color:#f1c40f; font-size:13px;">💬 Chat:</span>
             <input type="text" id="chat-input" placeholder="Nhập nội dung chat rồi nhấn Enter (Chửi thề 'dm, vcl, ngu' sẽ bị Cảnh Sát bắt đi tù!)..." onkeydown="if(event.key==='Enter') sendChat()">
             <button class="action-btn" style="width:80px; margin:0; text-align:center; padding:7px; background:#0097e6;" onclick="sendChat()">Gửi</button>
-            <span style="font-size:11px; color:#bdc3c7;">🎮 Phím Mũi Tên / WASD để đi lại & câu cá</span>
+            <span style="font-size:11px; color:#bdc3c7;">    📱 Chạm để di chuyển · Chạm ô đất để trồng/thu hoạch ·
+    Vuốt theo mũi tên khi cá cắn câu ·
+    💻 Máy tính dùng Mũi tên/WASD</span>
         </div>
         <div id="log-box">🌟 Hệ thống: Chào mừng bạn trở về bầu trời tuổi thơ Avatar Teamobi!</div>
     </div>
@@ -591,6 +569,8 @@ let player = {
 
 let chatBubble = { text: "Chào anh em 9x nha!", expire: Date.now() + 5000 };
 let keys = {};
+// Vị trí đích khi người chơi chạm vào màn hình.
+let movementTarget = null;
 let tick = 0;
 
 // Trạng thái Câu Cá
@@ -686,6 +666,7 @@ window.addEventListener("keyup", event => {
 
 function clearMovement() {
     keys = {};
+    movementTarget = null;
     player.vx = 0;
     player.vy = 0;
 }
@@ -699,105 +680,175 @@ document.addEventListener("visibilitychange", () => {
     }
 });
 
-/* ===== CHẠM Ô ĐẤT / CLICK CHUỘT ===== */
+/* ===== CHẠM TRỰC TIẾP ĐỂ DI CHUYỂN / VUỐT CÂU CÁ ===== */
 
-const canvasTouches = new Map();
+let canvasGesture = null;
 
-canvas.addEventListener("pointerdown", event => {
-    if (event.button !== 0) {
+const TAP_THRESHOLD = 12;
+const SWIPE_THRESHOLD = 24;
+
+function getCanvasPosition(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+
+    return {
+        x: (clientX - rect.left) * canvas.width / rect.width,
+        y: (clientY - rect.top) * canvas.height / rect.height
+    };
+}
+
+function handleCanvasTap(clientX, clientY) {
+    if (
+        player.jailTime > 0 ||
+        fishing.state !== "IDLE"
+    ) {
         return;
     }
 
-    canvasTouches.set(event.pointerId, {
-        x: event.clientX,
-        y: event.clientY
-    });
+    const point = getCanvasPosition(clientX, clientY);
+
+    // Ưu tiên thao tác với ô đất ở nông trại.
+    if (player.zone === "Nông Trại") {
+        for (let index = 0; index < player.plots.length; index++) {
+            const row = Math.floor(index / 3);
+            const col = index % 3;
+
+            const px = 65 + col * 125;
+            const py = 190 + row * 125;
+
+            if (
+                point.x >= px &&
+                point.x <= px + 105 &&
+                point.y >= py &&
+                point.y <= py + 95
+            ) {
+                clearMovement();
+                interactPlot(index);
+                return;
+            }
+        }
+    }
+
+    // Chạm ngoài ô đất: đặt vị trí đích cho nhân vật.
+    // Giới hạn đích giống giới hạn di chuyển trong game gốc.
+    clearMovement();
+
+    movementTarget = {
+        x: Math.max(35, Math.min(685, point.x)),
+        y: Math.max(155, Math.min(430, point.y))
+    };
+}
+
+canvas.addEventListener("pointerdown", event => {
+    // Chỉ nhận một ngón tay hoặc chuột trái tại một thời điểm.
+    if (
+        event.button !== 0 ||
+        canvasGesture ||
+        player.jailTime > 0
+    ) {
+        return;
+    }
+
+    event.preventDefault();
+
+    canvasGesture = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        maxDistance: 0,
+        zone: player.zone
+    };
+
+    canvas.setPointerCapture(event.pointerId);
 });
 
-canvas.addEventListener("pointercancel", event => {
-    canvasTouches.delete(event.pointerId);
+canvas.addEventListener("pointermove", event => {
+    if (
+        !canvasGesture ||
+        canvasGesture.pointerId !== event.pointerId
+    ) {
+        return;
+    }
+
+    // Ghi nhận quãng kéo lớn nhất để tránh nhầm kéo thành chạm.
+    const distance = Math.hypot(
+        event.clientX - canvasGesture.startX,
+        event.clientY - canvasGesture.startY
+    );
+
+    canvasGesture.maxDistance = Math.max(
+        canvasGesture.maxDistance,
+        distance
+    );
 });
 
 canvas.addEventListener("pointerup", event => {
-    const start = canvasTouches.get(event.pointerId);
-    canvasTouches.delete(event.pointerId);
-
-    if (!start) {
-        return;
-    }
-
-    // Không coi thao tác kéo/cuộn là chạm ô đất.
     if (
-        Math.hypot(
-            event.clientX - start.x,
-            event.clientY - start.y
-        ) > 12
+        !canvasGesture ||
+        canvasGesture.pointerId !== event.pointerId
     ) {
         return;
     }
 
+    const gesture = canvasGesture;
+    canvasGesture = null;
+
+    if (canvas.hasPointerCapture(event.pointerId)) {
+        canvas.releasePointerCapture(event.pointerId);
+    }
+
     if (
-        player.zone !== "Nông Trại"
-        || player.jailTime > 0
+        player.jailTime > 0 ||
+        player.zone !== gesture.zone
     ) {
         return;
     }
 
-    const rect = canvas.getBoundingClientRect();
+    const dx = event.clientX - gesture.startX;
+    const dy = event.clientY - gesture.startY;
+    const distance = Math.hypot(dx, dy);
 
-    // Đổi tọa độ màn hình sang tọa độ Canvas 720 × 480.
-    const mx =
-        (event.clientX - rect.left)
-        * canvas.width / rect.width;
-
-    const my =
-        (event.clientY - rect.top)
-        * canvas.height / rect.height;
-
-    for (let index = 0; index < 6; index++) {
-        const row = Math.floor(index / 3);
-        const col = index % 3;
-
-        const px = 65 + col * 125;
-        const py = 190 + row * 125;
-
-        if (
-            mx >= px && mx <= px + 105
-            && my >= py && my <= py + 95
-        ) {
-            interactPlot(index);
+    // Khi cá cắn câu: một lần vuốt nhập một hướng.
+    if (fishing.state === "BITING") {
+        if (distance < SWIPE_THRESHOLD) {
             return;
         }
+
+        let direction;
+
+        if (Math.abs(dx) > Math.abs(dy)) {
+            direction = dx > 0 ? "ArrowRight" : "ArrowLeft";
+        } else {
+            direction = dy > 0 ? "ArrowDown" : "ArrowUp";
+        }
+
+        handleFishingKey(direction);
+        return;
+    }
+
+    // Chỉ coi thao tác ngắn, ít dịch chuyển là một lần chạm.
+    if (
+        fishing.state === "IDLE" &&
+        Math.max(distance, gesture.maxDistance) <= TAP_THRESHOLD
+    ) {
+        handleCanvasTap(event.clientX, event.clientY);
     }
 });
 
-/* ===== BỐN NÚT CẢM ỨNG ===== */
+function cancelCanvasGesture() {
+    canvasGesture = null;
+}
 
-document.querySelectorAll("[data-game-key]").forEach(button => {
-    const key = button.dataset.gameKey;
+canvas.addEventListener("pointercancel", cancelCanvasGesture);
+canvas.addEventListener("lostpointercapture", cancelCanvasGesture);
 
-    button.addEventListener("pointerdown", event => {
-        event.preventDefault();
+window.addEventListener("blur", cancelCanvasGesture);
 
-        if (player.jailTime > 0) {
-            return;
-        }
-
-        button.setPointerCapture(event.pointerId);
-
-        keys[key] = true;
-        handleFishingKey(key);
-    });
-
-    const release = () => {
-        keys[key] = false;
-    };
-
-    button.addEventListener("pointerup", release);
-    button.addEventListener("pointercancel", release);
-    button.addEventListener("lostpointercapture", release);
+document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+        cancelCanvasGesture();
+    }
 });
-
+      
 function log(msg, color = "#2ecc71") {
     const box = document.getElementById("log-box");
     box.style.color = color;
@@ -846,10 +897,13 @@ function changeZone(z) {
         log("Bạn đang bị giam trong Nhà Tù! Không thể di chuyển!", "#e74c3c");
         return;
     }
+    clearMovement();
+
     fishing.state = "IDLE";
     player.zone = z;
     player.x = 350;
     player.y = (z === "Sinh Thái") ? 235 : 320;
+
     renderSidebar();
     log(`Đã bước vào khu vực: ${z}`);
 }
@@ -886,7 +940,9 @@ function renderSidebar() {
     } else if (z === "Sinh Thái") {
         html += `
             <div style="font-size:12px; color:#dcdde1; margin-bottom:8px;">
-                Đứng trên cầu gỗ và quăng cần! Khi cá cắn câu, hãy bấm các phím mũi tên <b>↑ ↓ ← →</b> thật chuẩn!
+                Đứng trên cầu gỗ và quăng cần! Khi cá cắn câu, vuốt lần lượt theo các hướng
+<b>↑ ↓ ← →</b> trên màn hình game.
+Máy tính có thể dùng phím mũi tên.
             </div>
             <button class="action-btn" style="background:#0097e6" onclick="startFishing()">🎣 Quăng Cần Câu Cá (-20 Xu)</button>
             <button class="action-btn" style="background:#16a085" onclick="autoFishing()">🤖 Bật Auto Câu Cá (-50 Xu / Tự giật 100%)</button>
@@ -1711,19 +1767,78 @@ function updateTopBar() {
 function updateLogic() {
     tick++;
 
-    // Di chuyển nhân vật bằng phím Mũi tên hoặc WASD
-    player.vx = 0; player.vy = 0;
-    if (fishing.state === "IDLE") {
-        let speed = 3.2;
-        if (keys["ArrowLeft"] || keys["a"] || keys["A"]) player.vx = -speed;
-        if (keys["ArrowRight"] || keys["d"] || keys["D"]) player.vx = speed;
-        if (keys["ArrowUp"] || keys["w"] || keys["W"]) player.vy = -speed;
-        if (keys["ArrowDown"] || keys["s"] || keys["S"]) player.vy = speed;
+// Di chuyển bằng bàn phím hoặc chạm vào vị trí đích.
+player.vx = 0;
+player.vy = 0;
 
-        player.x = Math.max(35, Math.min(685, player.x + player.vx));
-        player.y = Math.max(155, Math.min(430, player.y + player.vy));
+const canMove =
+    player.jailTime <= 0 &&
+    fishing.state === "IDLE";
+
+if (canMove) {
+    const speed = 3.2;
+
+    let keyboardX = 0;
+    let keyboardY = 0;
+
+    if (keys["ArrowLeft"] || keys["a"] || keys["A"]) {
+        keyboardX -= 1;
     }
 
+    if (keys["ArrowRight"] || keys["d"] || keys["D"]) {
+        keyboardX += 1;
+    }
+
+    if (keys["ArrowUp"] || keys["w"] || keys["W"]) {
+        keyboardY -= 1;
+    }
+
+    if (keys["ArrowDown"] || keys["s"] || keys["S"]) {
+        keyboardY += 1;
+    }
+
+    if (keyboardX !== 0 || keyboardY !== 0) {
+        // Khi dùng bàn phím, hủy vị trí đích từ cảm ứng.
+        movementTarget = null;
+
+        // Chuẩn hóa để đi chéo không nhanh hơn đi thẳng.
+        const length = Math.hypot(keyboardX, keyboardY);
+
+        player.vx = keyboardX / length * speed;
+        player.vy = keyboardY / length * speed;
+
+    } else if (movementTarget) {
+        const dx = movementTarget.x - player.x;
+        const dy = movementTarget.y - player.y;
+
+        const distance = Math.hypot(dx, dy);
+
+        if (distance <= speed) {
+            // Đã đến đích: dừng chính xác tại vị trí đó.
+            player.x = movementTarget.x;
+            player.y = movementTarget.y;
+
+            movementTarget = null;
+        } else {
+            player.vx = dx / distance * speed;
+            player.vy = dy / distance * speed;
+        }
+    }
+
+    player.x = Math.max(
+        35,
+        Math.min(685, player.x + player.vx)
+    );
+
+    player.y = Math.max(
+        155,
+        Math.min(430, player.y + player.vy)
+    );
+
+} else {
+    // Không tiếp tục đi khi đang câu cá hoặc bị giam.
+    movementTarget = null;
+}
     // NPC tự động rao chat ngẫu nhiên tạo không khí sôi động
     if (tick % 160 === 0) {
         let zNpcs = npcs.filter(n => n.zone === player.zone);
