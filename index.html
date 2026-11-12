@@ -135,6 +135,97 @@ footer{padding:12px;background:#112233}
   #fish-ui{left:8%;width:84%;padding:6px}
   .stat{font-size:10px}
 }
+/* ===== SỬA KHUNG PHÁT YOUTUBE ===== */
+
+#movie {
+  display: flex;
+  flex-direction: column;
+
+  left: 50%;
+  top: 12%;
+  transform: translateX(-50%);
+
+  width: 36%;
+  min-width: 220px;
+
+  height: 250px;
+  min-height: 236px;
+
+  background: #081522;
+  border: 2px solid #b8d4df;
+  border-radius: 7px;
+  z-index: 20;
+}
+
+#movie[hidden] {
+  display: none !important;
+}
+
+#movie-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+
+  flex: 0 0 34px;
+  height: 34px;
+  padding: 3px 6px;
+
+  color: #ffe4af;
+  background: #20364b;
+  font-size: 11px;
+}
+
+#movie-tools button {
+  min-height: 26px;
+  padding: 3px 7px;
+  font-size: 11px;
+}
+
+#yt-slot {
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  height: auto;
+  min-height: 200px;
+  background: #000;
+}
+
+#yt-slot iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+  border: 0;
+}
+
+/* Thông báo không được chặn thao tác với video. */
+#movie-message {
+  inset: 34px 0 0;
+  pointer-events: none;
+}
+
+#movie-message a {
+  pointer-events: auto;
+}
+
+/* Xem lớn để dễ bấm trên điện thoại. */
+#movie.movie-expanded {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+
+  width: min(900px, 96vw);
+  height: min(620px, 88vh);
+  height: min(620px, 88dvh);
+
+  min-width: 0;
+  min-height: 236px;
+
+  z-index: 1000;
+  box-shadow: 0 0 0 100vmax #000b;
+}
 </style>
 </head>
 <body>
@@ -991,136 +1082,330 @@ function refreshUI(){
     `${s.boss.demo?"🧪 BOSS THỬ — KHÔNG THƯỞNG":"🚨 BOSS XUẤT HIỆN"} · Vào Hàng Rong, né vòng đỏ và đánh boss.`:"");
 }
 
-/* ======================= YOUTUBE / LỖI 153 ======================= */
+/* ======================= YOUTUBE ĐÃ CHỈNH SỬA ======================= */
 
-const video={
-  player:null,id:"",status:"Dán link YouTube. Trình phát không tự bật âm thanh.",
-  loading:false,token:0,visible:false
+const video = {
+  player: null,
+  id: "",
+  status: "Nhập link YouTube rồi bấm tải video.",
+  loading: false,
+  token: 0,
+  visible: false
 };
-let apiPromise=null;
-function youtubeId(value){
-  value=String(value||"").trim();
-  if(/^[\w-]{11}$/.test(value))return value;
-  try{
-    const u=new URL(/^https?:\/\//i.test(value)?value:"https://"+value);
-    if(!["http:","https:"].includes(u.protocol))return "";
-    let id="";
-    if(["youtu.be","www.youtu.be"].includes(u.hostname))id=u.pathname.split("/").filter(Boolean)[0]||"";
-    else if(["youtube.com","www.youtube.com","m.youtube.com","www.youtube-nocookie.com"].includes(u.hostname)){
-      id=u.searchParams.get("v")||"";
-      const p=u.pathname.split("/").filter(Boolean);
-      if(!id&&["shorts","embed","live"].includes(p[0]))id=p[1]||"";
+
+function youtubeId(value) {
+  value = String(value || "").trim();
+
+  // Cho phép nhập trực tiếp ID video.
+  if (/^[A-Za-z0-9_-]{11}$/.test(value)) {
+    return value;
+  }
+
+  try {
+    const url = new URL(
+      /^https?:\/\//i.test(value)
+        ? value
+        : "https://" + value
+    );
+
+    if (!["http:", "https:"].includes(url.protocol)) {
+      return "";
     }
-    return /^[\w-]{11}$/.test(id)?id:"";
-  }catch(e){return "";}
+
+    const host = url.hostname.toLowerCase();
+    const parts = url.pathname.split("/").filter(Boolean);
+
+    let id = "";
+
+    if (["youtu.be", "www.youtu.be"].includes(host)) {
+      id = parts[0] || "";
+    } else if (
+      [
+        "youtube.com",
+        "www.youtube.com",
+        "m.youtube.com",
+        "youtube-nocookie.com",
+        "www.youtube-nocookie.com"
+      ].includes(host)
+    ) {
+      id = url.searchParams.get("v") || "";
+
+      if (
+        !id &&
+        ["embed", "shorts", "live"].includes(parts[0])
+      ) {
+        id = parts[1] || "";
+      }
+    }
+
+    return /^[A-Za-z0-9_-]{11}$/.test(id) ? id : "";
+  } catch (error) {
+    return "";
+  }
 }
-function movieMessage(message,show=true){
-  put("movie-message-text",message);
-  $("movie-message").hidden=!show;
-  const link=$("movie-open");
-  link.hidden=!s.videoId;
-  link.href=s.videoId?"https://www.youtube.com/watch?v="+s.videoId:"https://www.youtube.com/";
+
+function movieMessage(message, show = true) {
+  put("movie-message-text", message);
+  $("movie-message").hidden = !show;
+
+  const link = $("movie-open");
+
+  link.hidden = !s.videoId;
+  link.href = s.videoId
+    ? "https://www.youtube.com/watch?v=" + s.videoId
+    : "https://www.youtube.com/";
 }
-function youtubeAPI(){
-  if(window.YT?.Player)return Promise.resolve(window.YT);
-  if(apiPromise)return apiPromise;
-  apiPromise=new Promise((resolve,reject)=>{
-    const timer=setTimeout(()=>reject(new Error("Không tải được YouTube API. Kiểm tra mạng hoặc tiện ích chặn.")),15000);
-    const previous=window.onYouTubeIframeAPIReady;
-    window.onYouTubeIframeAPIReady=()=>{
-      clearTimeout(timer);
-      if(typeof previous==="function")previous();
-      resolve(window.YT);
-    };
-    const script=document.createElement("script");
-    script.src="https://www.youtube.com/iframe_api";
-    script.onerror=()=>{clearTimeout(timer);reject(new Error("YouTube API bị chặn hoặc mất kết nối."));};
-    document.head.appendChild(script);
-  }).catch(e=>{apiPromise=null;throw e;});
-  return apiPromise;
+
+function installMovieTools() {
+  if ($("movie-tools")) return;
+
+  const tools = document.createElement("div");
+  tools.id = "movie-tools";
+
+  const title = document.createElement("span");
+  title.textContent = "🎬 PHIM CÀ PHÊ 9X";
+
+  const buttons = document.createElement("div");
+
+  const expand = document.createElement("button");
+  expand.type = "button";
+  expand.id = "movie-expand-button";
+  expand.textContent = "⛶ Mở lớn";
+
+  expand.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const expanded = $("movie").classList.contains(
+      "movie-expanded"
+    );
+
+    setMovieExpanded(!expanded);
+  });
+
+  const external = document.createElement("button");
+  external.type = "button";
+  external.textContent = "↗ YouTube";
+
+  external.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    openVideo();
+  });
+
+  buttons.append(expand, external);
+  tools.append(title, buttons);
+
+  $("movie").prepend(tools);
 }
-function pauseVideo(){
-  try{video.player?.pauseVideo();}catch(e){}
+
+function setMovieExpanded(expanded) {
+  $("movie").classList.toggle(
+    "movie-expanded",
+    !!expanded
+  );
+
+  const button = $("movie-expand-button");
+
+  if (button) {
+    button.textContent = expanded
+      ? "↙ Thu nhỏ"
+      : "⛶ Mở lớn";
+  }
 }
-function destroyVideo(){
+
+function pauseVideo() {
+  const frame = $("yt-slot").querySelector("iframe");
+
+  if (!frame || !frame.contentWindow) return;
+
+  // Gửi lệnh tạm dừng cho trình phát đã bật enablejsapi.
+  // Không cần tải thư viện IFrame API bên ngoài.
+  try {
+    frame.contentWindow.postMessage(
+      JSON.stringify({
+        event: "command",
+        func: "pauseVideo",
+        args: []
+      }),
+      "https://www.youtube.com"
+    );
+  } catch (error) {
+    console.warn("Không gửi được lệnh tạm dừng:", error);
+  }
+}
+
+function destroyVideo() {
+  pauseVideo();
+
   video.token++;
-  try{video.player?.destroy();}catch(e){}
-  video.player=null;video.id="";video.loading=false;
+  video.player = null;
+  video.id = "";
+  video.loading = false;
+
   $("yt-slot").replaceChildren();
 }
-function videoError(code){
-  const errors={
-    2:"Link hoặc ID video không hợp lệ.",
-    5:"Trình duyệt không phát được video này.",
-    100:"Video đã bị xóa hoặc không công khai.",
-    101:"Chủ video không cho phép nhúng. Hãy xem trực tiếp trên YouTube.",
-    150:"Chủ video không cho phép nhúng. Hãy xem trực tiếp trên YouTube.",
-    153:"Lỗi 153: YouTube không nhận được Referer/định danh hợp lệ. Dùng HTTP/HTTPS; kiểm tra hosting và tiện ích chặn quyền riêng tư."
-  };
-  video.status=errors[code]||`YouTube báo lỗi ${code}. Hãy thử xem trực tiếp.`;
-  movieMessage(video.status,true);refreshUI();
-}
-async function loadVideo(force=false){
-  if(!s.videoId){movieMessage("Dán link YouTube trong bảng điều khiển.");return;}
-  if(!["http:","https:"].includes(location.protocol)){
-    video.status="Bạn đang mở file://. Chạy python -m http.server 8000 rồi mở http://localhost:8000, hoặc dùng hosting HTTPS.";
-    movieMessage("Không nhúng ổn định từ file://. Hãy chạy bằng HTTP/HTTPS.",true);
-    refreshUI();return;
+
+function loadVideo(force = false) {
+  installMovieTools();
+
+  if (!s.videoId) {
+    movieMessage(
+      "Nhập link YouTube trong bảng điều khiển.",
+      true
+    );
+    return;
   }
-  if(!force&&(video.id===s.videoId||video.loading))return;
+
+  if (!["http:", "https:"].includes(location.protocol)) {
+    video.status =
+      "Đang mở bằng file://. Hãy chạy game qua " +
+      "http://localhost:8000 hoặc hosting HTTPS.";
+
+    movieMessage(
+      "YouTube cần chạy qua HTTP/HTTPS. " +
+      "Không mở index.html trực tiếp.",
+      true
+    );
+
+    refreshUI();
+    return;
+  }
+
+  // Không tải lại iframe liên tục khi cập nhật game.
+  if (
+    !force &&
+    video.id === s.videoId &&
+    $("yt-slot").querySelector("iframe")
+  ) {
+    return;
+  }
+
   destroyVideo();
-  const token=video.token,id=s.videoId;
-  video.loading=true;
-  video.status="Đang tải trình phát YouTube…";
-  movieMessage("Đang tải YouTube…",true);refreshUI();
-  try{
-    const YT=await youtubeAPI();
-    if(token!==video.token||id!==s.videoId)return;
-    const frame=document.createElement("iframe");
-    frame.id="yt-frame";
-    frame.title="Phim quán cà phê";
-    frame.referrerPolicy="strict-origin-when-cross-origin";
-    frame.allow="encrypted-media; picture-in-picture; fullscreen";
-    frame.allowFullscreen=true;
-    const params=new URLSearchParams({
-      enablejsapi:"1",origin:location.origin,playsinline:"1",
-      rel:"0",autoplay:"0"
-    });
-    frame.src=`https://www.youtube.com/embed/${id}?${params}`;
-    $("yt-slot").replaceChildren(frame);
-    video.id=id;
-    video.player=new YT.Player(frame,{
-      events:{
-        onReady:()=>{
-          if(token!==video.token)return;
-          video.loading=false;
-          video.status="Đã tải. Bấm phát trên màn hình. Khi boss xuất hiện, video sẽ được tạm dừng.";
-          movieMessage("",false);
-          if(!video.visible)pauseVideo();
-          refreshUI();
-        },
-        onError:event=>{
-          if(token!==video.token)return;
-          video.loading=false;videoError(event.data);
-        }
-      }
-    });
-  }catch(e){
-    if(token!==video.token)return;
-    video.loading=false;video.status=e.message;
-    movieMessage(e.message,true);refreshUI();
+
+  const token = video.token;
+  const id = s.videoId;
+
+  video.id = id;
+  video.loading = true;
+  video.status =
+    "Bấm nút ▶ trên video. Có thể chọn Mở lớn để dễ thao tác.";
+
+  const frame = document.createElement("iframe");
+
+  frame.id = "yt-frame";
+  frame.title = "Video YouTube tại Hàng Rong";
+
+  frame.setAttribute(
+    "allow",
+    "autoplay; encrypted-media; picture-in-picture; fullscreen"
+  );
+
+  frame.setAttribute("allowfullscreen", "");
+  frame.setAttribute(
+    "referrerpolicy",
+    "strict-origin-when-cross-origin"
+  );
+
+  frame.setAttribute("loading", "eager");
+  frame.setAttribute("tabindex", "0");
+
+  const params = new URLSearchParams({
+    enablejsapi: "1",
+    origin: location.origin,
+    playsinline: "1",
+    controls: "1",
+    autoplay: "0",
+    rel: "0",
+    fs: "1"
+  });
+
+  frame.addEventListener("load", () => {
+    if (token !== video.token) return;
+
+    video.loading = false;
+
+    // Iframe tải xong không có nghĩa video chắc chắn phát được.
+    // Nếu YouTube báo lỗi, thông báo gốc vẫn hiện trong iframe.
+    video.status =
+      "Bấm ▶ để phát. Nếu YouTube báo không cho nhúng, " +
+      "hãy chọn ↗ YouTube.";
+
+    movieMessage("", false);
+
+    if (!video.visible) pauseVideo();
+
+    refreshUI();
+  });
+
+  frame.src =
+    "https://www.youtube.com/embed/" +
+    id +
+    "?" +
+    params.toString();
+
+  $("yt-slot").replaceChildren(frame);
+
+  // Quan trọng: không đặt lớp thông báo lên nút phát.
+  // Không chờ onYouTubeIframeAPIReady hoặc onReady.
+  movieMessage("", false);
+
+  syncMovie();
+
+  // Khi người dùng bấm tải/thử lại, mở lớn để dễ bấm phát.
+  if (force && video.visible) {
+    setMovieExpanded(true);
+  }
+
+  refreshUI();
+}
+
+function syncMovie() {
+  installMovieTools();
+
+  const visible =
+    s.zone === CAFE &&
+    !s.boss &&
+    s.jailUntil <= Date.now();
+
+  if (video.visible && !visible) {
+    pauseVideo();
+  }
+
+  video.visible = visible;
+  $("movie").hidden = !visible;
+
+  if (!visible) {
+    setMovieExpanded(false);
+  }
+
+  if (!s.videoId) {
+    movieMessage(
+      "🎬 Nhập link YouTube trong bảng điều khiển.",
+      true
+    );
   }
 }
-function syncMovie(){
-  const visible=s.zone===CAFE&&!s.boss&&s.jailUntil<=Date.now();
-  if(video.visible&&!visible)pauseVideo();
-  video.visible=visible;$("movie").hidden=!visible;
-  if(!s.videoId)movieMessage("🎬 Dán link YouTube trong bảng điều khiển.",true);
+
+function openVideo() {
+  if (!s.videoId) {
+    log("🎬 Chưa có video.");
+    return;
+  }
+
+  window.open(
+    "https://www.youtube.com/watch?v=" + s.videoId,
+    "_blank",
+    "noopener"
+  );
 }
-function openVideo(){
-  if(!s.videoId){log("🎬 Chưa có video.");return;}
-  window.open("https://www.youtube.com/watch?v="+s.videoId,"_blank","noopener");
-}
+
+// Escape chỉ thu nhỏ màn hình, không xóa video.
+window.addEventListener("keydown", event => {
+  if (event.key === "Escape") {
+    setMovieExpanded(false);
+  }
+});
 
 /* ======================= NÔNG TRẠI / CÂU CÁ ======================= */
 
