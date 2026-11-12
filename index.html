@@ -135,96 +135,150 @@ footer{padding:12px;background:#112233}
   #fish-ui{left:8%;width:84%;padding:6px}
   .stat{font-size:10px}
 }
-/* ===== SỬA KHUNG PHÁT YOUTUBE ===== */
+/* ===== VIDEO NẰM ĐÚNG TRONG MÀN CHIẾU CỦA QUÁN ===== */
 
-#movie {
-  display: flex;
-  flex-direction: column;
+#stage {
+  position: relative;
+  overflow: hidden;
+}
 
-  left: 50%;
-  top: 12%;
-  transform: translateX(-50%);
+/*
+  Canvas gốc: 960 × 600.
+  Màn chiếu: x=390, y=91, rộng=304, cao=162.
+  Dùng % để luôn khớp khi canvas co lại trên điện thoại.
+*/
+#movie,
+#movie.movie-expanded {
+  position: absolute;
 
-  width: 36%;
-  min-width: 220px;
+  left: 40.625%;
+  top: 15.166667%;
+  right: auto;
+  bottom: auto;
 
-  height: 250px;
-  min-height: 236px;
+  width: 31.666667%;
+  height: 27%;
 
-  background: #081522;
-  border: 2px solid #b8d4df;
-  border-radius: 7px;
-  z-index: 20;
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  max-height: none;
+
+  display: block;
+  padding: 0;
+  margin: 0;
+
+  transform: none;
+  aspect-ratio: auto;
+
+  overflow: hidden;
+  background: #050b12;
+
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+
+  z-index: 3;
 }
 
 #movie[hidden] {
   display: none !important;
 }
 
+/* Bỏ thanh công cụ làm khung phim bị cao lên. */
 #movie-tools {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-
-  flex: 0 0 34px;
-  height: 34px;
-  padding: 3px 6px;
-
-  color: #ffe4af;
-  background: #20364b;
-  font-size: 11px;
-}
-
-#movie-tools button {
-  min-height: 26px;
-  padding: 3px 7px;
-  font-size: 11px;
+  display: none !important;
 }
 
 #yt-slot {
-  position: relative;
-  flex: 1 1 auto;
-  width: 100%;
-  height: auto;
-  min-height: 200px;
-  background: #000;
-}
+  position: absolute;
+  inset: 0;
 
-#yt-slot iframe {
   display: block;
   width: 100%;
   height: 100%;
-  min-height: 200px;
+
+  min-width: 0;
+  min-height: 0;
+
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  background: #050b12;
+}
+
+/*
+  Trình phát có kích thước nội bộ 640 × 360.
+  JavaScript thu nhỏ toàn bộ vào màn chiếu,
+  thay vì ép iframe thành một khung rất nhỏ.
+*/
+#yt-slot .yt-fit {
+  position: absolute;
+
+  width: 640px;
+  height: 360px;
+
+  padding: 0;
+  margin: 0;
+
+  transform-origin: 0 0;
+}
+
+#yt-slot .yt-fit iframe {
+  position: absolute;
+  inset: 0;
+
+  display: block;
+
+  width: 640px;
+  height: 360px;
+
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  max-height: none;
+
   border: 0;
-}
+  padding: 0;
+  margin: 0;
 
-/* Thông báo không được chặn thao tác với video. */
-#movie-message {
-  inset: 34px 0 0;
-  pointer-events: none;
-}
-
-#movie-message a {
   pointer-events: auto;
 }
 
-/* Xem lớn để dễ bấm trên điện thoại. */
-#movie.movie-expanded {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+/* Thông báo cũng nằm gọn trong màn chiếu. */
+#movie-message {
+  position: absolute;
+  inset: 0;
 
-  width: min(900px, 96vw);
-  height: min(620px, 88vh);
-  height: min(620px, 88dvh);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
 
-  min-width: 0;
-  min-height: 236px;
+  width: 100%;
+  height: 100%;
 
-  z-index: 1000;
-  box-shadow: 0 0 0 100vmax #000b;
+  padding: 5px;
+  overflow: hidden;
+
+  background: #102131;
+  text-align: center;
+
+  font-size: clamp(7px, 1.05vw, 11px);
+  line-height: 1.4;
+
+  /* Không chặn nút phát của iframe. */
+  pointer-events: none;
+}
+
+#movie-message[hidden] {
+  display: none !important;
+}
+
+#movie-message a {
+  margin-top: 4px;
+  color: #ffe0a0;
+  pointer-events: auto;
 }
 </style>
 </head>
@@ -1082,7 +1136,7 @@ function refreshUI(){
     `${s.boss.demo?"🧪 BOSS THỬ — KHÔNG THƯỞNG":"🚨 BOSS XUẤT HIỆN"} · Vào Hàng Rong, né vòng đỏ và đánh boss.`:"");
 }
 
-/* ======================= YOUTUBE ĐÃ CHỈNH SỬA ======================= */
+/* ======================= YOUTUBE VỪA MÀN CHIẾU ======================= */
 
 const video = {
   player: null,
@@ -1093,10 +1147,12 @@ const video = {
   visible: false
 };
 
+const YT_WIDTH = 640;
+const YT_HEIGHT = 360;
+
 function youtubeId(value) {
   value = String(value || "").trim();
 
-  // Cho phép nhập trực tiếp ID video.
   if (/^[A-Za-z0-9_-]{11}$/.test(value)) {
     return value;
   }
@@ -1144,6 +1200,24 @@ function youtubeId(value) {
   }
 }
 
+/*
+  Giữ hai hàm này để tương thích với bản sửa trước,
+  nhưng không tạo thanh công cụ hoặc cửa sổ nổi nữa.
+*/
+function installMovieTools() {
+  const tools = $("movie-tools");
+
+  if (tools) {
+    tools.remove();
+  }
+
+  $("movie").classList.remove("movie-expanded");
+}
+
+function setMovieExpanded() {
+  installMovieTools();
+}
+
 function movieMessage(message, show = true) {
   put("movie-message-text", message);
   $("movie-message").hidden = !show;
@@ -1156,62 +1230,37 @@ function movieMessage(message, show = true) {
     : "https://www.youtube.com/";
 }
 
-function installMovieTools() {
-  if ($("movie-tools")) return;
+/*
+  Thu nhỏ trình phát vào màn chiếu.
+  Giữ tỷ lệ 16:9, không kéo méo hoặc cắt video.
+  Màn chiếu của quán hơi rộng hơn 16:9,
+  nên có hai dải đen mỏng ở hai bên.
+*/
+function fitMovieToScreen() {
+  const movie = $("movie");
+  const inner = $("yt-slot").querySelector(".yt-fit");
 
-  const tools = document.createElement("div");
-  tools.id = "movie-tools";
+  if (!inner || movie.hidden) return;
 
-  const title = document.createElement("span");
-  title.textContent = "🎬 PHIM CÀ PHÊ 9X";
+  const width = movie.clientWidth;
+  const height = movie.clientHeight;
 
-  const buttons = document.createElement("div");
+  if (width <= 0 || height <= 0) return;
 
-  const expand = document.createElement("button");
-  expand.type = "button";
-  expand.id = "movie-expand-button";
-  expand.textContent = "⛶ Mở lớn";
-
-  expand.addEventListener("click", event => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    const expanded = $("movie").classList.contains(
-      "movie-expanded"
-    );
-
-    setMovieExpanded(!expanded);
-  });
-
-  const external = document.createElement("button");
-  external.type = "button";
-  external.textContent = "↗ YouTube";
-
-  external.addEventListener("click", event => {
-    event.preventDefault();
-    event.stopPropagation();
-    openVideo();
-  });
-
-  buttons.append(expand, external);
-  tools.append(title, buttons);
-
-  $("movie").prepend(tools);
-}
-
-function setMovieExpanded(expanded) {
-  $("movie").classList.toggle(
-    "movie-expanded",
-    !!expanded
+  const scale = Math.min(
+    width / YT_WIDTH,
+    height / YT_HEIGHT
   );
 
-  const button = $("movie-expand-button");
+  const displayedWidth = YT_WIDTH * scale;
+  const displayedHeight = YT_HEIGHT * scale;
 
-  if (button) {
-    button.textContent = expanded
-      ? "↙ Thu nhỏ"
-      : "⛶ Mở lớn";
-  }
+  const left = (width - displayedWidth) / 2;
+  const top = (height - displayedHeight) / 2;
+
+  inner.style.left = left + "px";
+  inner.style.top = top + "px";
+  inner.style.transform = "scale(" + scale + ")";
 }
 
 function pauseVideo() {
@@ -1219,8 +1268,6 @@ function pauseVideo() {
 
   if (!frame || !frame.contentWindow) return;
 
-  // Gửi lệnh tạm dừng cho trình phát đã bật enablejsapi.
-  // Không cần tải thư viện IFrame API bên ngoài.
   try {
     frame.contentWindow.postMessage(
       JSON.stringify({
@@ -1250,34 +1297,26 @@ function loadVideo(force = false) {
   installMovieTools();
 
   if (!s.videoId) {
-    movieMessage(
-      "Nhập link YouTube trong bảng điều khiển.",
-      true
-    );
+    movieMessage("🎬 Chưa có video.", true);
     return;
   }
 
   if (!["http:", "https:"].includes(location.protocol)) {
     video.status =
-      "Đang mở bằng file://. Hãy chạy game qua " +
-      "http://localhost:8000 hoặc hosting HTTPS.";
+      "Hãy mở game bằng HTTP/HTTPS, không dùng file://.";
 
-    movieMessage(
-      "YouTube cần chạy qua HTTP/HTTPS. " +
-      "Không mở index.html trực tiếp.",
-      true
-    );
-
+    movieMessage("Cần mở game bằng HTTP/HTTPS.", true);
     refreshUI();
     return;
   }
 
-  // Không tải lại iframe liên tục khi cập nhật game.
+  // Không tải lại video mỗi lần giao diện game cập nhật.
   if (
     !force &&
     video.id === s.videoId &&
     $("yt-slot").querySelector("iframe")
   ) {
+    fitMovieToScreen();
     return;
   }
 
@@ -1289,12 +1328,18 @@ function loadVideo(force = false) {
   video.id = id;
   video.loading = true;
   video.status =
-    "Bấm nút ▶ trên video. Có thể chọn Mở lớn để dễ thao tác.";
+    "Bấm ▶ ngay trên màn chiếu để phát video.";
+
+  const inner = document.createElement("div");
+  inner.className = "yt-fit";
 
   const frame = document.createElement("iframe");
 
   frame.id = "yt-frame";
-  frame.title = "Video YouTube tại Hàng Rong";
+  frame.title = "Màn chiếu YouTube tại quán cà phê";
+
+  frame.width = String(YT_WIDTH);
+  frame.height = String(YT_HEIGHT);
 
   frame.setAttribute(
     "allow",
@@ -1325,15 +1370,17 @@ function loadVideo(force = false) {
 
     video.loading = false;
 
-    // Iframe tải xong không có nghĩa video chắc chắn phát được.
-    // Nếu YouTube báo lỗi, thông báo gốc vẫn hiện trong iframe.
-    video.status =
-      "Bấm ▶ để phát. Nếu YouTube báo không cho nhúng, " +
-      "hãy chọn ↗ YouTube.";
-
+    // Không che nút phát sau khi iframe tải.
     movieMessage("", false);
+    fitMovieToScreen();
 
-    if (!video.visible) pauseVideo();
+    video.status =
+      "Bấm ▶ trên màn chiếu. " +
+      "Có thể dùng nút toàn màn hình của YouTube.";
+
+    if (!video.visible) {
+      pauseVideo();
+    }
 
     refreshUI();
   });
@@ -1344,19 +1391,14 @@ function loadVideo(force = false) {
     "?" +
     params.toString();
 
-  $("yt-slot").replaceChildren(frame);
+  inner.appendChild(frame);
+  $("yt-slot").replaceChildren(inner);
 
-  // Quan trọng: không đặt lớp thông báo lên nút phát.
-  // Không chờ onYouTubeIframeAPIReady hoặc onReady.
+  // Hiện trực tiếp iframe, không phủ lớp “Đang tải”.
   movieMessage("", false);
 
   syncMovie();
-
-  // Khi người dùng bấm tải/thử lại, mở lớn để dễ bấm phát.
-  if (force && video.visible) {
-    setMovieExpanded(true);
-  }
-
+  fitMovieToScreen();
   refreshUI();
 }
 
@@ -1368,22 +1410,23 @@ function syncMovie() {
     !s.boss &&
     s.jailUntil <= Date.now();
 
-  if (video.visible && !visible) {
+  const wasVisible = video.visible;
+
+  if (wasVisible && !visible) {
     pauseVideo();
   }
 
   video.visible = visible;
   $("movie").hidden = !visible;
 
-  if (!visible) {
-    setMovieExpanded(false);
+  if (!s.videoId) {
+    movieMessage("🎬 Nhập link YouTube để chiếu phim.", true);
   }
 
-  if (!s.videoId) {
-    movieMessage(
-      "🎬 Nhập link YouTube trong bảng điều khiển.",
-      true
-    );
+  // Chỉ đo lại khi màn chiếu vừa xuất hiện.
+  if (visible && !wasVisible) {
+    fitMovieToScreen();
+    requestAnimationFrame(fitMovieToScreen);
   }
 }
 
@@ -1400,12 +1443,19 @@ function openVideo() {
   );
 }
 
-// Escape chỉ thu nhỏ màn hình, không xóa video.
-window.addEventListener("keydown", event => {
-  if (event.key === "Escape") {
-    setMovieExpanded(false);
-  }
-});
+/*
+  Theo dõi kích thước thật của màn chiếu.
+  Video luôn khớp khi xoay điện thoại hoặc đổi kích thước.
+*/
+if ("ResizeObserver" in window) {
+  const movieResizeObserver = new ResizeObserver(() => {
+    fitMovieToScreen();
+  });
+
+  movieResizeObserver.observe($("movie"));
+}
+
+window.addEventListener("resize", fitMovieToScreen);
 
 /* ======================= NÔNG TRẠI / CÂU CÁ ======================= */
 
