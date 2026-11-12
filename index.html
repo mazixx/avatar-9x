@@ -882,9 +882,19 @@ function updateCafe(dt){
 }
 function updateWorldNPCs(dt){
   for(const n of world){
+    // Vợ được updateSpouse() điều khiển riêng.
+    if(n.id==="world_0"&&isMarried())continue;
+
     if(n.zone!==s.zone)continue;
-    n.px=n.x;n.py=n.y;
-    if(n.static||n.fishing){n.moving=false;continue;}
+
+    n.px=n.x;
+    n.py=n.y;
+
+    if(n.static||n.fishing){
+      n.moving=false;
+      continue;
+    }
+
     smoothMove(n,{
       x:n.homeX+Math.sin(rt.time*.26+n.phase)*27,
       y:n.homeY+Math.cos(rt.time*.21+n.phase)*13
@@ -2221,9 +2231,7 @@ function sendChat(){
   log(s.name+": "+message,"#c6e6ff");
   bubble("player",message,6000);
 
-  const pool=s.zone===CAFE
-    ?cafe.filter(n=>n.active)
-    :world.filter(n=>n.zone===s.zone);
+  const pool=getSceneNPCs(s.zone);
 
   const npc=pick(pool);
   if(!npc)return;
@@ -2625,6 +2633,20 @@ function worldTap(point){
   );
 
   if(npc){
+      if(npc.id==="world_0"&&isMarried()){
+      bubble(
+        npc.id,
+        pick([
+          "Đi đâu mình cũng đi cùng bạn! 💕",
+          "Cùng chăm nông trại nhé! 🌱",
+          "Ngồi cà phê với bạn vui nhất! ☕",
+          "Nhớ né vùng đỏ khi đánh boss nha! 💗",
+          "Cùng đi dạo khắp phố nhé! 🌸"
+        ]),
+        5000
+      );
+      return;
+    }
     bubble(
       npc.id,
       s.boss&&s.zone===CAFE
@@ -4053,30 +4075,42 @@ function drawWorld(alpha){
 
   if(jailed){
     drawAvatar(g,{
-      x:480,y:493,name:s.name,hp:s.hp,
-      moving:false,seated:false,look:{}
+      x:480,
+      y:493,
+      name:s.name,
+      hp:s.hp,
+      moving:false,
+      seated:false,
+      look:{}
     },true,480,493,time);
-    if(isMarried()){
-      const princess=getPrincess();
 
-      if(princess){
-        drawPrincess(g,princess,548,493,time);
+    if(isMarried()){
+      const wife=getPrincess();
+
+      if(wife){
+        drawPrincess(g,wife,548,493,time);
       }
     }
+
     drawBubbles(g,alpha,true);
     drawHUD(g,true);
     return;
   }
 
-  if(zone==="Nông Trại")drawPlots(g);
+  if(zone==="Nông Trại"){
+    drawPlots(g);
+  }
 
   drawEnvironment(g,time);
   drawDice(g);
 
-  if(zone===CAFE)drawWarning(g);
+  if(zone===CAFE){
+    drawWarning(g);
+  }
 
   const objects=[];
 
+  // Bàn, ghế và boss chỉ có tại quán cà phê.
   if(zone===CAFE){
     for(const seat of SEATS){
       objects.push({
@@ -4098,33 +4132,40 @@ function drawWorld(alpha){
         draw:()=>drawBoss(g)
       });
     }
+  }
 
-    for(const n of cafe){
-      if(!n.active)continue;
-      const position=mixPosition(n,alpha);
+  /*
+    Dùng chung danh sách NPC cho mọi khu.
+    Nếu đã kết hôn, danh sách luôn chứa vợ.
+  */
+  for(const n of getSceneNPCs(zone)){
+    const position=mixPosition(n,alpha);
 
-      // Không vẽ khách chưa đi vào vùng nhìn thấy.
-      if(position.x<-75||position.x>W+75)continue;
-
-      objects.push({
-        y:position.y,
-        draw:()=>drawAvatar(g,n,false,position.x,position.y,time)
-      });
+    if(position.x<-75||position.x>W+75){
+      continue;
     }
-  }else{
-    for(const n of world){
-       if(n.zone!==s.zone)continue;
 
-       // Người bạn đời được updateSpouse điều khiển.
-       // Không cho logic đi dạo kéo cô ấy về công viên.
-       if(n.id==="world_0"&&isMarried())continue;
-      const position=mixPosition(n,alpha);
+    objects.push({
+      y:position.y,
 
-      objects.push({
-        y:position.y,
-        draw:()=>drawAvatar(g,n,false,position.x,position.y,time)
-      });
-    }
+      draw:()=>{
+        if(n.id==="world_0"){
+          drawPrincess(
+            g,n,
+            position.x,
+            position.y,
+            time
+          );
+        }else{
+          drawAvatar(
+            g,n,false,
+            position.x,
+            position.y,
+            time
+          );
+        }
+      }
+    });
   }
 
   const playerX=rt.px+(s.x-rt.px)*alpha;
@@ -4132,42 +4173,29 @@ function drawWorld(alpha){
 
   objects.push({
     y:playerY,
+
     draw:()=>drawAvatar(g,{
-      name:s.name,x:s.x,y:s.y,hp:s.hp,
-      moving:rt.moving,phase:0
+      name:s.name,
+      x:s.x,
+      y:s.y,
+      hp:s.hp,
+      moving:rt.moving,
+      phase:0
     },true,playerX,playerY,time)
   });
-  // Ở các khu khác, vòng lặp world đã vẽ công chúa.
-  // Riêng quán cà phê cần thêm vào danh sách vật thể.
-  if(zone===CAFE&&isMarried()){
-    const princess=getPrincess();
 
-    if(princess){
-      const position=mixPosition(princess,alpha);
-
-      objects.push({
-        y:position.y,
-        draw:()=>drawAvatar(
-          g,
-          princess,
-          false,
-          position.x,
-          position.y,
-          time
-        )
-      });
-    }
-  }
+  // Vợ và người chơi cùng tham gia sắp xếp chiều sâu.
   objects.sort((a,b)=>a.y-b.y);
-  for(const object of objects)object.draw();
+
+  for(const object of objects){
+    object.draw();
+  }
 
   drawEffects(g);
   drawBubbles(g,alpha);
   drawHUD(g,false);
-  // Thiệp cưới và kim tuyến hiện trong 5 giây.
   drawWeddingEffect(g);
 }
-
 /* ======================= CẬP NHẬT GAME ======================= */
 
 function updateEffects(dt){
@@ -4467,17 +4495,39 @@ function getPrincess(){
   return world.find(n=>n.id==="world_0");
 }
 
-function princessFollowTarget(n){
-  const jailed=s.jailUntil>Date.now();
+/*
+  Danh sách NPC được hiển thị ở khu hiện tại.
+  Vợ được thêm riêng một lần, tránh vẽ trùng.
+*/
+function getSceneNPCs(zone=s.zone){
+  let list;
 
-  if(jailed){
-    // Người bạn đời xuất hiện bên cạnh để thăm.
-    // Không thay đổi thời gian giam của người chơi.
+  if(zone===CAFE){
+    list=cafe.filter(n=>n.active);
+  }else{
+    list=world.filter(n=>n.zone===zone);
+  }
+
+  if(isMarried()){
+    // Loại khỏi danh sách thường trước khi thêm lại.
+    list=list.filter(n=>n.id!=="world_0");
+
+    const wife=getPrincess();
+
+    if(wife&&zone===s.zone){
+      list.push(wife);
+    }
+  }
+
+  return list;
+}
+
+function princessFollowTarget(n){
+  if(s.jailUntil>Date.now()){
     return {x:548,y:493};
   }
 
-  // Khi đi ngang, công chúa đi hơi phía sau.
-  // Khi dừng lại, giữ phía đang đứng để tránh đổi bên liên tục.
+  // Khi đi ngang, vợ đi phía sau.
   if(rt.vx>12){
     n.followSide=-1;
   }else if(rt.vx<-12){
@@ -4486,6 +4536,7 @@ function princessFollowTarget(n){
 
   let side=n.followSide||1;
 
+  // Tránh bị đẩy ra ngoài cảnh.
   if(s.x>W-90)side=-1;
   if(s.x<90)side=1;
 
@@ -4498,27 +4549,28 @@ function princessFollowTarget(n){
 }
 
 function syncSpouse(force=false){
-  const n=getPrincess();
-  if(!n)return;
+  const wife=getPrincess();
+  if(!wife)return;
 
-  // Cho phép hàm drawBubbles nhận diện công chúa
-  // cả khi cô ấy đang đứng trong quán cà phê.
-  n.active=true;
+  wife.active=true;
 
   if(!isMarried()){
-    n.zone="Công Viên";
-    n.followScene=null;
-    n.followSide=1;
+    wife.zone="Công Viên";
+    wife.followScene=null;
+    wife.followSide=1;
 
     if(force){
-      n.x=n.homeX;
-      n.y=n.homeY;
-      n.px=n.x;
-      n.py=n.y;
-      n.vx=0;
-      n.vy=0;
-      n.moving=false;
+      wife.x=wife.homeX;
+      wife.y=wife.homeY;
+
+      wife.px=wife.x;
+      wife.py=wife.y;
+
+      wife.vx=0;
+      wife.vy=0;
+      wife.moving=false;
     }
+
     return;
   }
 
@@ -4526,65 +4578,71 @@ function syncSpouse(force=false){
     ?"Nhà Tù"
     :s.zone;
 
-  const changedScene=n.followScene!==scene;
+  const previousScene=wife.followScene;
+  const changedScene=previousScene!==scene;
 
-  n.zone=s.zone;
-  n.fishing=false;
-  n.seated=false;
-  n.seat=null;
-  n.hp=100;
+  // Sau khi kết hôn, luôn đồng bộ khu với người chơi.
+  wife.zone=s.zone;
 
-  // Lần kết hôn đầu tiên trong công viên:
-  // công chúa đi từ vị trí hiện tại tới người chơi,
-  // không nhảy tọa độ ngay.
+  // Không dùng trạng thái câu cá/đứng yên của NPC thường.
+  wife.fishing=false;
+  wife.static=false;
+  wife.seated=false;
+  wife.seat=null;
+
+  wife.hp=100;
+
   const firstMarriageInPark=
-    n.followScene==null&&scene==="Công Viên";
+    previousScene==null&&scene==="Công Viên";
 
   if(force||(changedScene&&!firstMarriageInPark)){
-    const target=princessFollowTarget(n);
+    const target=princessFollowTarget(wife);
 
-    n.x=target.x;
-    n.y=target.y;
-    n.px=n.x;
-    n.py=n.y;
+    // Đổi khu: cả hai cùng xuất hiện ở khu mới.
+    // Đồng bộ px/py để không nội suy từ khu cũ.
+    wife.x=target.x;
+    wife.y=target.y;
 
-    n.vx=0;
-    n.vy=0;
-    n.moving=false;
+    wife.px=wife.x;
+    wife.py=wife.y;
+
+    wife.vx=0;
+    wife.vy=0;
+    wife.moving=false;
   }
 
-  n.followScene=scene;
+  wife.followScene=scene;
 }
 
 function updateSpouse(dt){
   if(!isMarried())return;
 
-  const n=getPrincess();
-  if(!n)return;
+  const wife=getPrincess();
+  if(!wife)return;
 
   syncSpouse(false);
 
-  n.px=n.x;
-  n.py=n.y;
+  wife.px=wife.x;
+  wife.py=wife.y;
 
-  const target=princessFollowTarget(n);
+  const target=princessFollowTarget(wife);
 
   if(s.jailUntil>Date.now()){
-    n.x=target.x;
-    n.y=target.y;
-    n.vx=0;
-    n.vy=0;
-    n.moving=false;
+    wife.x=target.x;
+    wife.y=target.y;
+
+    wife.vx=0;
+    wife.vy=0;
+    wife.moving=false;
     return;
   }
 
-  const distance=dist(n,target);
+  const distance=dist(wife,target);
 
-  // Bình thường theo kịp người chơi;
-  // tăng tốc nếu đang ở quá xa.
+  // Đi theo mượt; tăng tốc nếu đang ở xa.
   const speed=distance>130?190:160;
 
-  smoothMove(n,target,speed,dt);
+  smoothMove(wife,target,speed,dt);
 }
 
 function startWedding(){
