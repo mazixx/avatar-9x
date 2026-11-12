@@ -372,7 +372,7 @@ footer{padding:12px;background:#112233}
 const W=960,H=600,STEP=1/60;
 const KEY="avatar_hangrong_complete_v2";
 const OLDKEY="avatar_html5_save";
-const CAFE="Hàng Rong",BOSS_INTERVAL=15*60*1000;
+const CAFE="Hàng Rong",BOSS_INTERVAL=5*60*1000;
 const ZONES=[
   ["Nông Trại","🏡"],[CAFE,"☕"],["Công Viên","🌳"],
   ["Sinh Thái","🎣"],["Giải Trí","🎰"],["Ngoại Ô","🔨"]
@@ -578,6 +578,10 @@ function load(){
   return defaults();
 }
 let s=load();
+s.nextBossAt=Math.min(
+  s.nextBossAt,
+  Date.now()+BOSS_INTERVAL
+);
 const canvas=$("canvas"),g=canvas.getContext("2d");
 const rt={
   keys:new Set(),target:null,vx:0,vy:0,px:s.x,py:s.y,moving:false,
@@ -779,6 +783,10 @@ function buildNPCs(){
     fishing:a[0]==="Sinh Thái",static:a[0]==="Ngoại Ô"
   }));
   for(let i=0;i<13;i++)spawnNPC(i,true);
+
+  // Nếu bản lưu đã kết hôn, công chúa xuất hiện
+  // ở cùng khu với người chơi ngay khi tải game.
+  syncSpouse(true);
 }
 function smoothMove(n,target,speed,dt){
   const dx=target.x-n.x,dy=target.y-n.y,d=Math.hypot(dx,dy);
@@ -1028,7 +1036,19 @@ function renderControls(){
     </div>`;
     html+=button("rose","🌹 Hoa hồng — 100 Xu, +15 tim","pink");
     html+=button("kiss","💋 Hôn — +5 tim, nghỉ 2 giây","pink");
-    html+=button("marry","💍 Kết hôn — 100 tim + 1.000 Xu","purple");
+ html+=button(
+  "marry",
+  "💍 Cầu hôn — 1% thành công · 100 tim + 1.000 Xu",
+  "purple"
+);
+
+html+=`
+  <div class="note">
+    Mỗi lần cầu hôn có 1% thành công.
+    Sau khi thử, tim về 0 dù thành công hay thất bại.
+    Thất bại phải tích lại đủ 100 tim.
+  </div>
+`;
   }else if(zone==="Sinh Thái"){
     html+=`<div class="card">
       🎣 Câu thường: 20 Xu. Khi cá cắn, nhập đúng chuỗi trong 5,5 giây.<br>
@@ -2038,31 +2058,107 @@ function bet(type){
   refreshUI();
   save();
 }
+/* ======================= CẦU HÔN: 1% THÀNH CÔNG ======================= */
+
 function social(type){
   if(!canAct()||s.zone!=="Công Viên")return;
+
+  if(type==="marry"){
+    // Đã kết hôn thì không thử lại, không mất tiền.
+    if(isMarried()){
+      log("💍 Hai bạn đã kết hôn rồi.");
+      return;
+    }
+
+    if(s.lovePts<100){
+      log(
+        `💖 Cần đủ 100 tim để cầu hôn. Hiện có ${s.lovePts}/100.`,
+        "#ffc0dc"
+      );
+      return;
+    }
+
+    // Không đủ tiền: giữ nguyên tim.
+    if(!spend(1000))return;
+
+    // Mỗi lượt thử đều dùng hết 100 tim.
+    s.lovePts=0;
+
+    // 1% mỗi lần thử, không cộng dồn theo số lần thất bại.
+    const success=Math.random()<0.01;
+
+    if(success){
+      s.spouse="Bé_Kẹo_Mút_9x";
+
+      // Giữ logic công chúa đi cùng và hiệu ứng cưới.
+      syncSpouse(false);
+      startWedding();
+
+      log(
+        "💍 Cầu hôn thành công! Công chúa 9x đồng ý và sẽ đi cùng bạn.",
+        "#ffe0a8"
+      );
+
+    }else{
+      // Chưa kết hôn: công chúa vẫn ở công viên.
+      bubble(
+        "world_0",
+        "Mình chưa sẵn sàng… Hãy cùng tạo thêm kỷ niệm nhé! 💗",
+        6000
+      );
+
+      bubble(
+        "player",
+        "Mình sẽ tiếp tục chinh phục trái tim bạn! 🌹",
+        4500
+      );
+
+      floating(
+        "CẦU HÔN CHƯA THÀNH CÔNG",
+        s.x,
+        s.y-85,
+        "#ffc1d9"
+      );
+
+      log(
+        "💔 Cầu hôn thất bại. Đã dùng 1.000 Xu; tim về 0/100. " +
+        "Tích lại đủ 100 tim để thử tiếp.",
+        "#ffc1d9"
+      );
+
+      beep(220,.15);
+    }
+
+    renderControls();
+    refreshUI();
+    save();
+    return;
+  }
 
   if(type==="kiss"){
     if(Date.now()<rt.socialUntil){
       log("💖 Chờ 2 giây giữa các lần tương tác.");
       return;
     }
+
     rt.socialUntil=Date.now()+2000;
     s.lovePts=Math.min(100,s.lovePts+5);
-    bubble("world_0","Hihi, dễ thương quá! 💕");
+
+    bubble(
+      "world_0",
+      isMarried()
+        ?"Đi cùng bạn là vui nhất! 💕"
+        :"Hihi, dễ thương quá! 💕"
+    );
+
   }else if(type==="rose"){
     if(!spend(100))return;
+
     s.lovePts=Math.min(100,s.lovePts+15);
     bubble("world_0","Cảm ơn hoa của bạn! 🌹");
-  }else{
-    if(s.spouse!=="Độc thân"){log("💍 Hai bạn đã kết hôn rồi.");return;}
-    if(s.lovePts<100){log("💖 Cần 100 điểm thân mật.");return;}
-    if(!spend(1000))return;
 
-    s.spouse="Bé_Kẹo_Mút_9x";
-    bubble("world_0","Cùng xây nông trại nhé! 💍",6000);
-    log("💍 Chúc mừng! Bạn đã kết hôn.","#ffb8d5");
-    sparks(s.x,s.y-30,"#ffbad9",25);
-    renderControls();
+  }else{
+    return;
   }
 
   floating("♥",s.x,s.y-65,"#ffaccf");
@@ -2104,7 +2200,7 @@ function changeZone(zone){
   }[zone];
 
   teleport(spawn[0],spawn[1]);
-
+  syncSpouse(true);
   // Đồng bộ vị trí trước để nội suy không kéo NPC từ khung hình cũ.
   for(const n of [...cafe,...world]){
     n.px=n.x;
@@ -3426,6 +3522,12 @@ function drawWings(c,id,level,time){
 /* ======================= VẼ NHÂN VẬT ======================= */
 
 function drawAvatar(c,n,player=false,x=n.x,y=n.y,time=rt.time){
+  // world_0 là Bé_Kẹo_Mút_9x.
+  // Dùng ngoại hình công chúa thay cho đồ NPC ngẫu nhiên.
+  if(!player&&n.id==="world_0"){
+    drawPrincess(c,n,x,y,time);
+    return;
+  }
   const look=n.look||{};
   const equipment=player?s.equipped:null;
 
@@ -3954,7 +4056,13 @@ function drawWorld(alpha){
       x:480,y:493,name:s.name,hp:s.hp,
       moving:false,seated:false,look:{}
     },true,480,493,time);
+    if(isMarried()){
+      const princess=getPrincess();
 
+      if(princess){
+        drawPrincess(g,princess,548,493,time);
+      }
+    }
     drawBubbles(g,alpha,true);
     drawHUD(g,true);
     return;
@@ -4005,7 +4113,11 @@ function drawWorld(alpha){
     }
   }else{
     for(const n of world){
-      if(n.zone!==zone)continue;
+       if(n.zone!==s.zone)continue;
+
+       // Người bạn đời được updateSpouse điều khiển.
+       // Không cho logic đi dạo kéo cô ấy về công viên.
+       if(n.id==="world_0"&&isMarried())continue;
       const position=mixPosition(n,alpha);
 
       objects.push({
@@ -4025,13 +4137,35 @@ function drawWorld(alpha){
       moving:rt.moving,phase:0
     },true,playerX,playerY,time)
   });
+  // Ở các khu khác, vòng lặp world đã vẽ công chúa.
+  // Riêng quán cà phê cần thêm vào danh sách vật thể.
+  if(zone===CAFE&&isMarried()){
+    const princess=getPrincess();
 
+    if(princess){
+      const position=mixPosition(princess,alpha);
+
+      objects.push({
+        y:position.y,
+        draw:()=>drawAvatar(
+          g,
+          princess,
+          false,
+          position.x,
+          position.y,
+          time
+        )
+      });
+    }
+  }
   objects.sort((a,b)=>a.y-b.y);
   for(const object of objects)object.draw();
 
   drawEffects(g);
   drawBubbles(g,alpha);
   drawHUD(g,false);
+  // Thiệp cưới và kim tuyến hiện trong 5 giây.
+  drawWeddingEffect(g);
 }
 
 /* ======================= CẬP NHẬT GAME ======================= */
@@ -4198,6 +4332,16 @@ function updateGame(dt){
   }
 
   updatePlayer(dt);
+
+  // Cập nhật sau người chơi để công chúa đi theo
+  // bằng tăng/giảm tốc và nội suy sẵn có.
+  updateSpouse(dt);
+
+  rt.wedding.remaining=Math.max(
+    0,
+    rt.wedding.remaining-dt
+  );
+
   updateRecovery(dt);
   updateFish();
   updateBoss(dt);
@@ -4308,7 +4452,494 @@ document.addEventListener("visibilitychange",()=>{
 });
 
 window.addEventListener("pagehide",()=>save());
+/* ======================= CÔNG CHÚA 9X / KẾT HÔN ======================= */
 
+rt.wedding={
+  remaining:0,
+  total:5
+};
+
+function isMarried(){
+  return s.spouse==="Bé_Kẹo_Mút_9x";
+}
+
+function getPrincess(){
+  return world.find(n=>n.id==="world_0");
+}
+
+function princessFollowTarget(n){
+  const jailed=s.jailUntil>Date.now();
+
+  if(jailed){
+    // Người bạn đời xuất hiện bên cạnh để thăm.
+    // Không thay đổi thời gian giam của người chơi.
+    return {x:548,y:493};
+  }
+
+  // Khi đi ngang, công chúa đi hơi phía sau.
+  // Khi dừng lại, giữ phía đang đứng để tránh đổi bên liên tục.
+  if(rt.vx>12){
+    n.followSide=-1;
+  }else if(rt.vx<-12){
+    n.followSide=1;
+  }
+
+  let side=n.followSide||1;
+
+  if(s.x>W-90)side=-1;
+  if(s.x<90)side=1;
+
+  const maxY=s.zone==="Sinh Thái"?355:560;
+
+  return {
+    x:clamp(s.x+side*48,35,W-35),
+    y:clamp(s.y+10,285,maxY)
+  };
+}
+
+function syncSpouse(force=false){
+  const n=getPrincess();
+  if(!n)return;
+
+  // Cho phép hàm drawBubbles nhận diện công chúa
+  // cả khi cô ấy đang đứng trong quán cà phê.
+  n.active=true;
+
+  if(!isMarried()){
+    n.zone="Công Viên";
+    n.followScene=null;
+    n.followSide=1;
+
+    if(force){
+      n.x=n.homeX;
+      n.y=n.homeY;
+      n.px=n.x;
+      n.py=n.y;
+      n.vx=0;
+      n.vy=0;
+      n.moving=false;
+    }
+    return;
+  }
+
+  const scene=s.jailUntil>Date.now()
+    ?"Nhà Tù"
+    :s.zone;
+
+  const changedScene=n.followScene!==scene;
+
+  n.zone=s.zone;
+  n.fishing=false;
+  n.seated=false;
+  n.seat=null;
+  n.hp=100;
+
+  // Lần kết hôn đầu tiên trong công viên:
+  // công chúa đi từ vị trí hiện tại tới người chơi,
+  // không nhảy tọa độ ngay.
+  const firstMarriageInPark=
+    n.followScene==null&&scene==="Công Viên";
+
+  if(force||(changedScene&&!firstMarriageInPark)){
+    const target=princessFollowTarget(n);
+
+    n.x=target.x;
+    n.y=target.y;
+    n.px=n.x;
+    n.py=n.y;
+
+    n.vx=0;
+    n.vy=0;
+    n.moving=false;
+  }
+
+  n.followScene=scene;
+}
+
+function updateSpouse(dt){
+  if(!isMarried())return;
+
+  const n=getPrincess();
+  if(!n)return;
+
+  syncSpouse(false);
+
+  n.px=n.x;
+  n.py=n.y;
+
+  const target=princessFollowTarget(n);
+
+  if(s.jailUntil>Date.now()){
+    n.x=target.x;
+    n.y=target.y;
+    n.vx=0;
+    n.vy=0;
+    n.moving=false;
+    return;
+  }
+
+  const distance=dist(n,target);
+
+  // Bình thường theo kịp người chơi;
+  // tăng tốc nếu đang ở quá xa.
+  const speed=distance>130?190:160;
+
+  smoothMove(n,target,speed,dt);
+}
+
+function startWedding(){
+  rt.wedding.remaining=rt.wedding.total;
+
+  ring(s.x,s.y,"#ffd6e8",125);
+  ring(s.x,s.y,"#ffe6a8",85);
+
+  const princess=getPrincess();
+
+  if(princess){
+    bubble(
+      princess.id,
+      "Từ hôm nay, mình cùng đi khắp phố nhé! 💍💕",
+      6500
+    );
+  }
+
+  bubble("player","💍 Cùng nhau xây kỷ niệm 9x!",6500);
+
+  // Tim và kim tuyến bay lên.
+  for(let i=0;i<28;i++){
+    const life=rnd(1.8,3.8);
+
+    rt.particles.push({
+      text:i%4===0?"✦":"♥",
+      x:s.x+rnd(-95,95),
+      y:s.y-rnd(15,100),
+      vx:rnd(-18,18),
+      vy:rnd(-60,-25),
+      life,
+      max:life,
+      color:i%4===0?"#ffe7a2":"#ffb6d3"
+    });
+  }
+
+  floating(
+    "💍 ĐÃ KẾT HÔN!",
+    s.x,
+    s.y-115,
+    "#ffe0ef"
+  );
+
+  beep(880,.22);
+}
+
+function drawWeddingEffect(c){
+  const wedding=rt.wedding;
+  if(!wedding||wedding.remaining<=0)return;
+
+  const progress=1-wedding.remaining/wedding.total;
+  const fade=clamp(
+    Math.min(progress*5,(1-progress)*5),
+    0,
+    1
+  );
+
+  c.save();
+  c.globalAlpha=fade;
+
+  glow(c,480,190,175,"#ffc2df33");
+
+  rr(
+    c,245,121,470,108,15,
+    "#3e2945ed",
+    "#f4c3dd"
+  );
+
+  txt(
+    c,
+    "💍 LỄ CƯỚI PHỐ NHỎ 💍",
+    480,147,24,
+    "#ffe0ee",
+    "center",900
+  );
+
+  txt(
+    c,
+    s.name+"  ♥  Công chúa 9x",
+    480,179,16,
+    "#ffe7b7",
+    "center",800
+  );
+
+  txt(
+    c,
+    "Từ hôm nay, cùng nhau đi khắp Hàng Rong!",
+    480,207,12,
+    "#f4d9e9"
+  );
+
+  for(let i=0;i<8;i++){
+    const x=265+i*61;
+    const y=113+Math.sin(rt.time*2+i)*9;
+
+    txt(
+      c,i%2?"♥":"✦",
+      x,y,14,
+      i%2?"#ffbfdc":"#ffe9aa"
+    );
+  }
+
+  c.restore();
+}
+
+/* ======================= NGOẠI HÌNH CÔNG CHÚA ======================= */
+
+function drawPrincess(c,n,x=n.x,y=n.y,time=rt.time){
+  const married=isMarried();
+  const moving=n.moving;
+  const phase=n.phase||0;
+
+  const step=moving?Math.sin(time*10+phase)*3:0;
+  const bob=moving?Math.sin(time*10+phase)*.8:0;
+  const sway=Math.sin(time*2.5+phase)*1.5;
+
+  const skin="#f5d3b8";
+  const hair="#5c3c49";
+
+  c.save();
+  c.translate(x,y);
+
+  ell(c,1,4,23,7,"#14273744");
+
+  if(married){
+    ell(c,0,4,25,8,null,"#f4b8d5");
+    glow(c,0,-35,52,"#ffb7d51c");
+  }
+
+  c.save();
+  c.translate(0,bob);
+
+  // Tóc dài phía sau lưng.
+  rr(c,-18,-73,36,51,15,hair,"#3e2a3866");
+
+  poly(c,[
+    [-17,-54],[-23+sway,-24],
+    [-15,-28],[-10,-52]
+  ],hair);
+
+  poly(c,[
+    [17,-54],[23+sway,-24],
+    [15,-28],[10,-52]
+  ],hair);
+
+  // Giày hồng có nơ.
+  rr(c,-15+step,-6,13,8,4,"#b36589","#f4b6d0");
+  rr(c,2-step,-6,13,8,4,"#b36589","#f4b6d0");
+
+  ell(c,-9+step,-4,3,2,"#ffe1ec");
+  ell(c,9-step,-4,3,2,"#ffe1ec");
+
+  // Thân váy.
+  rr(c,-12,-42,24,21,6,"#eaa8c5","#b9799b");
+
+  poly(c,[
+    [-12,-38],[-5,-43],[0,-36],
+    [5,-43],[12,-38],[9,-25],[-9,-25]
+  ],"#f7c9dd");
+
+  // Tay áo phồng.
+  ell(c,-15,-36,7,7,"#f9d9e8","#d5a3ba");
+  ell(c,15,-36,7,7,"#f9d9e8","#d5a3ba");
+
+  const handSway=moving?step*.5:0;
+
+  ln(
+    c,-17,-32,-20-handSway,-23,
+    skin,5
+  );
+  ln(
+    c,17,-32,20+handSway,-23,
+    skin,5
+  );
+
+  ell(c,-20-handSway,-22,3.5,4,skin);
+  ell(c,20+handSway,-22,3.5,4,skin);
+
+  // Váy xòe ngoài.
+  poly(c,[
+    [-11,-26],[11,-26],
+    [27+sway,-2],[15,2],
+    [0,0],[-15,2],[-27+sway,-2]
+  ],"#d98caf","#ac6f95");
+
+  // Lớp váy giữa.
+  poly(c,[
+    [-8,-25],[8,-25],
+    [20+sway,-6],[9,-2],
+    [0,-5],[-9,-2],[-20+sway,-6]
+  ],"#efb3cf","#d394b2");
+
+  // Lớp voan sáng ở giữa.
+  poly(c,[
+    [-4,-26],[4,-26],
+    [11,-7],[0,-3],[-11,-7]
+  ],"#ffe2ed");
+
+  // Viền ren.
+  for(let i=0;i<9;i++){
+    const rx=-24+i*6;
+    const ry=-1+Math.abs(rx)*.015;
+
+    ell(c,rx+sway,ry,3,2.4,"#ffe8f0");
+  }
+
+  // Đai eo và nơ.
+  rr(c,-12,-28,24,5,2,"#fff0c8");
+
+  poly(c,[
+    [-2,-26],[-9,-31],[-10,-22]
+  ],"#f3d29d","#c9a16e");
+
+  poly(c,[
+    [2,-26],[9,-31],[10,-22]
+  ],"#f3d29d","#c9a16e");
+
+  ell(c,0,-26,3,3,"#fff0c9");
+
+  // Họa tiết nhỏ trên váy.
+  txt(c,"✦",-13,-14,8,"#fff1cb");
+  txt(c,"✦",14,-11,7,"#fff1cb");
+
+  // Cổ và khuôn mặt.
+  rr(c,-4,-48,8,9,3,skin);
+  ell(c,-13,-57,3.5,4.5,skin);
+  ell(c,13,-57,3.5,4.5,skin);
+
+  ell(c,0,-59,14,17,skin,"#d2a58b");
+
+  // Tóc mái rẽ nhẹ.
+  ell(c,0,-73,16,9,hair,"#3e2a3866");
+
+  poly(c,[
+    [-16,-71],[-2,-80],[-1,-69],
+    [-9,-58],[-14,-60]
+  ],hair);
+
+  poly(c,[
+    [16,-71],[2,-80],[1,-69],
+    [9,-60],[14,-61]
+  ],hair);
+
+  // Lọn tóc hai bên.
+  ell(c,-15,-59,4,12,hair);
+  ell(c,15,-59,4,12,hair);
+
+  ln(c,-10,-76,-5,-70,"#b88b9b66",1.5);
+  ln(c,8,-75,12,-69,"#b88b9b66",1.5);
+
+  // Mắt lớn có điểm sáng và mi.
+  for(const eyeX of [-5,5]){
+    ell(c,eyeX,-58,2.8,3.4,"#fff8ef");
+    ell(c,eyeX,-58,1.8,2.7,"#73536c");
+    ell(c,eyeX+.4,-59,0.8,1,"#fff");
+
+    ln(c,eyeX-2,-61,eyeX+2,-61,"#624351",1.3);
+
+    const outer=eyeX<0?-1:1;
+    ln(
+      c,
+      eyeX+outer*2,-61,
+      eyeX+outer*3.5,-63,
+      "#624351",1
+    );
+  }
+
+  // Má hồng, nụ cười.
+  ell(c,-9,-52,3.5,2,"#ea9da477");
+  ell(c,9,-52,3.5,2,"#ea9da477");
+
+  c.strokeStyle="#bc778b";
+  c.lineWidth=1.2;
+  c.beginPath();
+  c.moveTo(-3,-48);
+  c.quadraticCurveTo(0,-45,3,-48);
+  c.stroke();
+  c.lineWidth=1;
+
+  // Hoa cài tóc.
+  for(let i=0;i<5;i++){
+    const a=i/5*Math.PI*2;
+    ell(
+      c,
+      -15+Math.cos(a)*3.5,
+      -71+Math.sin(a)*3.5,
+      2.6,2.6,
+      "#ffd6e8"
+    );
+  }
+  ell(c,-15,-71,2,2,"#f5d48f");
+
+  // Vương miện nhỏ kiểu công chúa.
+  poly(c,[
+    [-12,-78],[-13,-89],[-6,-84],
+    [0,-94],[6,-84],[13,-89],[12,-78]
+  ],"#f7d58e","#b99359");
+
+  rr(c,-12,-80,24,4,1,"#ffe6ac");
+  ell(c,0,-85,2.5,3.5,"#ec9fbe");
+  ell(c,-8,-82,1.5,1.5,"#fff5d9");
+  ell(c,8,-82,1.5,1.5,"#fff5d9");
+
+  // Khuyên tai và vòng ngọc.
+  ell(c,-13,-49,1.7,2.5,"#ffe8b3");
+  ell(c,13,-49,1.7,2.5,"#ffe8b3");
+
+  for(let i=0;i<5;i++){
+    ell(
+      c,
+      -5+i*2.5,
+      -41+Math.sin(i/4*Math.PI)*2,
+      1.2,1.2,
+      "#fff4e6"
+    );
+  }
+
+  c.restore();
+
+  // Nhãn tên riêng, không dùng hạng skin ngẫu nhiên.
+  rr(c,-48,-115,96,18,5,"#493148e8","#e8b2d2");
+
+  txt(
+    c,"Công chúa 9x",
+    0,-106,10,
+    "#ffe0ec",
+    "center",800
+  );
+
+  if(married){
+    txt(
+      c,"💍 Bạn đời",
+      0,-126,9,
+      "#ffe8b4"
+    );
+
+    const a=time*1.2+phase;
+
+    txt(
+      c,"♥",
+      Math.cos(a)*29,
+      -49+Math.sin(a)*13,
+      9,"#ffbed9"
+    );
+
+    txt(
+      c,"✦",
+      -Math.cos(a)*28,
+      -39-Math.sin(a)*12,
+      8,"#ffe5a6"
+    );
+  }
+
+  c.restore();
+}
 /* ======================= KHỞI TẠO ======================= */
 
 resizeCanvas();
